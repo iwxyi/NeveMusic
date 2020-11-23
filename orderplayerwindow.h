@@ -199,6 +199,8 @@ private slots:
 
     void on_historySongsListView_customContextMenuRequested(const QPoint &);
 
+    void on_normalSongsListView_customContextMenuRequested(const QPoint &pos);
+
 private:
     void searchMusic(QString key);
     void setSearchResultTable(QList<Song> songs);
@@ -237,6 +239,7 @@ private:
     SongList orderSongs;
     SongList favoriteSongs;
     SongList historySongs;
+    SongList normalSongs;
     SongList toDownloadSongs;
     Song playAfterDownloaded;
     Song downloadingSong;

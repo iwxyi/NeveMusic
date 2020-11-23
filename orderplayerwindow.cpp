@@ -18,7 +18,6 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     ui->searchResultTable->verticalHeader()->setStyleSheet("QHeaderView { background-color: transparent; }");
     ui->searchResultTable->setItemDelegate(new NoFocusDelegate());
 
-
     QString vScrollBarSS("QScrollBar:vertical{"        //垂直滑块整体
                          "background: transparent;"  //背景色
                          "padding-top:0px;"    //上预留位置（放置向上箭头）
@@ -56,6 +55,8 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     ui->orderSongsListView->horizontalScrollBar()->setStyleSheet(hScrollBarSS);
     ui->favoriteSongsListView->verticalScrollBar()->setStyleSheet(vScrollBarSS);
     ui->favoriteSongsListView->horizontalScrollBar()->setStyleSheet(hScrollBarSS);
+    ui->normalSongsListView->verticalScrollBar()->setStyleSheet(vScrollBarSS);
+    ui->normalSongsListView->horizontalScrollBar()->setStyleSheet(hScrollBarSS);
     ui->historySongsListView->verticalScrollBar()->setStyleSheet(vScrollBarSS);
     ui->historySongsListView->horizontalScrollBar()->setStyleSheet(hScrollBarSS);
     connect(ui->searchResultTable->horizontalHeader(), SIGNAL(sectionClicked(int)), this, SLOT(sortSearchResult(int)));
@@ -75,14 +76,19 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     });
 
     musicsFileDir.mkpath(musicsFileDir.absolutePath());
+    QTime time;
+    time= QTime::currentTime();
+    qsrand(time.msec()+time.second()*1000);
 
     // 读取数据
     ui->listTabWidget->setCurrentIndex(settings.value("orderplayerwindow/tabIndex").toInt());
     restoreSongList("music/order", orderSongs);
     restoreSongList("music/favorite", favoriteSongs);
+    restoreSongList("music/normal", normalSongs);
     restoreSongList("music/history", historySongs);
     setSongModelToView(orderSongs, ui->orderSongsListView);
     setSongModelToView(favoriteSongs, ui->favoriteSongsListView);
+    setSongModelToView(normalSongs, ui->normalSongsListView);
     setSongModelToView(historySongs, ui->historySongsListView);
 
     int volume = settings.value("music/volume", 50).toInt();
@@ -403,6 +409,12 @@ void OrderPlayerWindow::playNext()
 {
     if (!orderSongs.size()) // 播放列表全部结束
     {
+        // 查看常时列表
+        if (!normalSongs.size())
+            return ;
+
+        int r = qrand() % normalSongs.size();
+        startPlaySong(normalSongs.at(r));
         return ;
     }
 
@@ -740,7 +752,32 @@ void OrderPlayerWindow::on_orderSongsListView_customContextMenuRequested(const Q
         setSongModelToView(orderSongs, ui->orderSongsListView);
     })->disable(!songs.size());
 
-    menu->addAction("删除", [=]{
+    menu->addAction("添加常时播放", [=]{
+        foreach (Song song, songs)
+        {
+            normalSongs.removeOne(song);
+        }
+        for (int i = songs.size()-1; i >= 0; i--)
+        {
+            normalSongs.insert(0, songs.at(i));
+        }
+        saveSongList("music/normal", normalSongs);
+        setSongModelToView(normalSongs, ui->normalSongsListView);
+    })->disable(!currentSong.isValid());
+
+    menu->split()->addAction("上移", [=]{
+        orderSongs.swapItemsAt(row, row-1);
+        saveSongList("music/order", orderSongs);
+        setSongModelToView(orderSongs, ui->orderSongsListView);
+    })->disable(songs.size() != 1 || row < 1);
+
+    menu->addAction("下移", [=]{
+        orderSongs.swapItemsAt(row, row+1);
+        saveSongList("music/order", orderSongs);
+        setSongModelToView(orderSongs, ui->orderSongsListView);
+    })->disable(songs.size() != 1 || row >= orderSongs.size()-1);
+
+    menu->split()->addAction("删除", [=]{
         foreach (Song song, songs)
         {
             orderSongs.removeOne(song);
@@ -778,13 +815,88 @@ void OrderPlayerWindow::on_favoriteSongsListView_customContextMenuRequested(cons
         appendOrderSongs(songs);
     })->disable(!songs.size());
 
-    menu->addAction("移除收藏", [=]{
+    menu->addAction("添加常时播放", [=]{
+        foreach (Song song, songs)
+        {
+            normalSongs.removeOne(song);
+        }
+        for (int i = songs.size()-1; i >= 0; i--)
+        {
+            normalSongs.insert(0, songs.at(i));
+        }
+        saveSongList("music/normal", normalSongs);
+        setSongModelToView(normalSongs, ui->normalSongsListView);
+    })->disable(!currentSong.isValid());
+
+    menu->split()->addAction("上移", [=]{
+        favoriteSongs.swapItemsAt(row, row-1);
+        saveSongList("music/order", favoriteSongs);
+        setSongModelToView(favoriteSongs, ui->favoriteSongsListView);
+    })->disable(songs.size() != 1 || row < 1);
+
+    menu->addAction("下移", [=]{
+        favoriteSongs.swapItemsAt(row, row+1);
+        saveSongList("music/order", favoriteSongs);
+        setSongModelToView(favoriteSongs, ui->favoriteSongsListView);
+    })->disable(songs.size() != 1 || row >= favoriteSongs.size()-1);
+
+    menu->split()->addAction("移出收藏", [=]{
         foreach (Song song, songs)
         {
             favoriteSongs.removeOne(song);
         }
         saveSongList("music/favorite", favoriteSongs);
         setSongModelToView(favoriteSongs, ui->favoriteSongsListView);
+    })->disable(!songs.size());
+
+    menu->exec();
+}
+
+void OrderPlayerWindow::on_normalSongsListView_customContextMenuRequested(const QPoint &pos)
+{
+    auto indexes = ui->normalSongsListView->selectionModel()->selectedRows(0);
+    SongList songs;
+    foreach (auto index, indexes)
+        songs.append(normalSongs.at(index.row()));
+    int row = ui->normalSongsListView->currentIndex().row();
+    Song currentSong;
+    if (row > -1)
+        currentSong = normalSongs.at(row);
+
+    FacileMenu* menu = new FacileMenu(this);
+
+    menu->addAction("立即播放", [=]{
+        Song song = normalSongs.takeAt(row);
+        startPlaySong(song);
+    })->disable(songs.size() != 1 || !currentSong.isValid());
+
+    menu->addAction("下一首播放", [=]{
+        appendNextSongs(songs);
+    })->disable(!songs.size());
+
+    menu->addAction("添加到播放列表", [=]{
+        appendOrderSongs(songs);
+    })->disable(!songs.size());
+
+    menu->split()->addAction("上移", [=]{
+        normalSongs.swapItemsAt(row, row-1);
+        saveSongList("music/order", normalSongs);
+        setSongModelToView(normalSongs, ui->normalSongsListView);
+    })->disable(songs.size() != 1 || row < 1);
+
+    menu->addAction("下移", [=]{
+        normalSongs.swapItemsAt(row, row+1);
+        saveSongList("music/order", normalSongs);
+        setSongModelToView(normalSongs, ui->normalSongsListView);
+    })->disable(songs.size() != 1 || row >= normalSongs.size()-1);
+
+    menu->split()->addAction("移出常时播放", [=]{
+        foreach (Song song, songs)
+        {
+            normalSongs.removeOne(song);
+        }
+        saveSongList("music/normal", normalSongs);
+        setSongModelToView(normalSongs, ui->normalSongsListView);
     })->disable(!songs.size());
 
     menu->exec();
@@ -815,6 +927,19 @@ void OrderPlayerWindow::on_historySongsListView_customContextMenuRequested(const
     menu->addAction("添加到播放列表", [=]{
         appendOrderSongs(songs);
     })->disable(!songs.size());
+
+    menu->addAction("添加常时播放", [=]{
+        foreach (Song song, songs)
+        {
+            normalSongs.removeOne(song);
+        }
+        for (int i = songs.size()-1; i >= 0; i--)
+        {
+            normalSongs.insert(0, songs.at(i));
+        }
+        saveSongList("music/normal", normalSongs);
+        setSongModelToView(normalSongs, ui->normalSongsListView);
+    })->disable(!currentSong.isValid());
 
     menu->addAction("删除", [=]{
         foreach (Song song, songs)

@@ -266,6 +266,55 @@ QTabBar::tab:selected
             </item>
            </layout>
           </widget>
+          <widget class="QWidget" name="tab_4">
+           <property name="styleSheet">
+            <string notr="true">QWidget
+{
+	background: transparent;
+	border: none;
+}</string>
+           </property>
+           <attribute name="title">
+            <string>常时</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="verticalLayout_9">
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QListView" name="normalSongsListView">
+              <property name="contextMenuPolicy">
+               <enum>Qt::CustomContextMenu</enum>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">#playHistoriesListView
+{
+	background: transparent;
+	border: none;
+}</string>
+              </property>
+              <property name="editTriggers">
+               <set>QAbstractItemView::NoEditTriggers</set>
+              </property>
+              <property name="selectionMode">
+               <enum>QAbstractItemView::ExtendedSelection</enum>
+              </property>
+              <property name="selectionBehavior">
+               <enum>QAbstractItemView::SelectRows</enum>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
           <widget class="QWidget" name="tab_3">
            <property name="styleSheet">
             <string notr="true">QWidget
