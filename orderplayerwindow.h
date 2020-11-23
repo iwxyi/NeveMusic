@@ -38,7 +38,7 @@ QT_END_NAMESPACE
 
 struct Artist
 {
-    qint64 id;
+    qint64 id = 0;
     QString name;
     QString faceUrl;
 
@@ -63,10 +63,10 @@ struct Artist
 
 struct Album
 {
-    qint64 id;
+    qint64 id = 0;
     QString name;
-    int size;
-    int mark;
+    int size = 0;
+    int mark = 0;
 
     static Album fromJson(QJsonObject json)
     {
@@ -91,10 +91,10 @@ struct Album
 
 struct Song
 {
-    qint64 id;
+    qint64 id = 0;
     QString name;
-    int duration;
-    int mark;
+    int duration = 0;
+    int mark = 0;
     QList<Artist> artists;
     Album album;
     QString artistNames;
@@ -171,6 +171,8 @@ private slots:
 
     void on_listTabWidget_currentChanged(int index);
 
+    void sortSearchResult(int col);
+
 private:
     void searchMusic(QString key);
     void setSearchResultTable(QList<Song> songs);
@@ -179,12 +181,16 @@ private:
     void saveSongList(QString key, SongList songs);
     void restoreSongList(QString key, SongList& songs);
     void setSongModelToView(const SongList& songs, QListView* listView);
+    bool isSongDownloaded(Song song);
 
     void startPlaySong(Song song);
     void appendOrderSongs(SongList songs);
     void appendNextSongs(SongList songs);
 
-    void downloadSong(Song song, bool play = false);
+    void playLocalSong(Song song);
+    void addDownloadSong(Song song);
+    void downloadNext();
+    void downloadSong(Song song);
 
 protected:
     void showEvent(QShowEvent*) override;
@@ -194,11 +200,15 @@ private:
     Ui::OrderPlayerWindow *ui;
     QSettings settings;
     QDir musicsFileDir;
+    const QString API_DOMAIN = "http://iwxyi.com:3000/";
     QList<Song> searchResultSongs;
 
     SongList orderSongs;
     SongList favoriteSongs;
     SongList historySongs;
+    SongList toDownloadSongs;
+    Song playAfterDownloaded;
+    Song downloadingSong;
 };
 
 class NoFocusDelegate : public QStyledItemDelegate

@@ -18,7 +18,6 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     ui->searchResultTable->setItemDelegate(new NoFocusDelegate());
 
     musicsFileDir.mkpath(musicsFileDir.absolutePath());
-    qDebug() << musicsFileDir.absolutePath();
 
     ui->listTabWidget->setCurrentIndex(settings.value("orderplayerwindow/tabIndex").toInt());
     restoreSongList("music/order", orderSongs);
@@ -67,6 +66,8 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     ui->favoriteSongsListView->horizontalScrollBar()->setStyleSheet(hScrollBarSS);
     ui->playHistoriesListView->verticalScrollBar()->setStyleSheet(vScrollBarSS);
     ui->playHistoriesListView->horizontalScrollBar()->setStyleSheet(hScrollBarSS);
+
+    connect(ui->searchResultTable->horizontalHeader(), SIGNAL(sectionClicked(int)), this, SLOT(sortSearchResult(int)));
 
     searchMusic("哈哈哈");
 }
@@ -218,6 +219,11 @@ void OrderPlayerWindow::setSongModelToView(const SongList &songs, QListView *lis
     listView->setModel(model);
 }
 
+bool OrderPlayerWindow::isSongDownloaded(Song song)
+{
+    return QFileInfo(musicsFileDir.absoluteFilePath(snum(song.id) + ".mp3")).exists();
+}
+
 void OrderPlayerWindow::showEvent(QShowEvent *)
 {
     restoreGeometry(settings.value("orderplayerwindow/geometry").toByteArray());
@@ -279,7 +285,15 @@ void OrderPlayerWindow::on_searchResultTable_customContextMenuRequested(const QP
 
 void OrderPlayerWindow::startPlaySong(Song song)
 {
-
+    if (isSongDownloaded(song))
+    {
+        playLocalSong(song);
+    }
+    else
+    {
+        playAfterDownloaded = song;
+        downloadSong(song);
+    }
 }
 
 void OrderPlayerWindow::appendOrderSongs(SongList songs)
@@ -289,9 +303,11 @@ void OrderPlayerWindow::appendOrderSongs(SongList songs)
         if (orderSongs.contains(song))
             continue;
         orderSongs.append(song);
+        addDownloadSong(song);
     }
     saveSongList("music/order", orderSongs);
     setSongModelToView(orderSongs, ui->orderSongsListView);
+    downloadNext();
 }
 
 void OrderPlayerWindow::appendNextSongs(SongList songs)
@@ -301,17 +317,124 @@ void OrderPlayerWindow::appendNextSongs(SongList songs)
         if (orderSongs.contains(song))
             orderSongs.removeOne(song);
         orderSongs.insert(0, song);
+        addDownloadSong(song);
     }
     saveSongList("music/order", orderSongs);
     setSongModelToView(orderSongs, ui->orderSongsListView);
+    downloadNext();
 }
 
-void OrderPlayerWindow::downloadSong(Song song, bool play)
+/**
+ * 立刻开始播放音乐
+ */
+void OrderPlayerWindow::playLocalSong(Song song)
 {
+    if (!isSongDownloaded(song))
+    {
+        qDebug() << "error: 未下载歌曲" << song.simpleString() << "开始下载";
+        playAfterDownloaded = song;
+        downloadSong(song);
+        return ;
+    }
 
+    // 开始播放
+
+}
+
+void OrderPlayerWindow::addDownloadSong(Song song)
+{
+    if (isSongDownloaded(song) || toDownloadSongs.contains(song) || downloadingSong == song)
+        return ;
+    toDownloadSongs.append(song);
+}
+
+void OrderPlayerWindow::downloadNext()
+{
+    if (downloadingSong.isValid() || !toDownloadSongs.size())
+        return ;
+    Song song = toDownloadSongs.takeFirst();
+    if (!song.isValid())
+        return downloadNext();
+
+    downloadSong(song);
+}
+
+/**
+ * 下载音乐
+ */
+void OrderPlayerWindow::downloadSong(Song song)
+{
+    if (isSongDownloaded(song))
+        return ;
+    downloadingSong = song;
+    QString url = API_DOMAIN + "/song/url?id=" + snum(song.id);
+    qDebug() << "获取歌曲信息：" << song.simpleString();
+    QNetworkAccessManager* manager = new QNetworkAccessManager;
+    QNetworkRequest* request = new QNetworkRequest(url);
+    request->setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded; charset=UTF-8");
+    request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
+    connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
+        QByteArray baData = reply->readAll();
+        qDebug() << baData;
+        QJsonParseError error;
+        QJsonDocument document = QJsonDocument::fromJson(baData, &error);
+        if (error.error != QJsonParseError::NoError)
+        {
+            qDebug() << error.errorString();
+            return ;
+        }
+        QJsonObject json = document.object();
+        if (json.value("code").toInt() != 200)
+        {
+            qDebug() << ("返回结果不为200：") << json.value("message").toString();
+            return ;
+        }
+
+        QJsonArray array = json.value("data").toArray();
+        if (!array.size())
+        {
+            qDebug() << "未找到歌曲：" << song.simpleString();
+            downloadingSong = Song();
+            downloadNext();
+            return ;
+        }
+
+        json = array.first().toObject();
+        QString url = JVAL_STR(url);
+        int br = JVAL_INT(br); // 比率320000
+        int size = JVAL_INT(size);
+        QString type = JVAL_STR(type); // mp3
+        QString encodeType = JVAL_STR(encodeType); // mp3
+        qDebug() << "    信息：" << br << size << type << url;
+
+        QNetworkAccessManager manager;
+        QEventLoop loop;
+        QNetworkReply *reply1 = manager.get(QNetworkRequest(QUrl(url)));
+        //请求结束并下载完成后，退出子事件循环
+        connect(reply1, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+        //开启子事件循环
+        loop.exec();
+        QByteArray baData1 = reply1->readAll();
+        qDebug() << "下载结束：" << baData1.size();
+
+        QFile file(musicsFileDir.absoluteFilePath(snum(song.id)+".mp3"));
+        file.open(QIODevice::WriteOnly);
+        file.write(baData1);
+        file.flush();
+        file.close();
+
+        downloadingSong = Song();
+        downloadNext();
+    });
+    manager->get(*request);
 }
 
 void OrderPlayerWindow::on_listTabWidget_currentChanged(int index)
 {
     settings.setValue("orderplayerwindow/tabIndex", index);
+}
+
+void OrderPlayerWindow::sortSearchResult(int col)
+{
+
 }
