@@ -6,12 +6,18 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>789</width>
+    <width>956</width>
     <height>642</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>OrderPlayerWindow</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QMainWindow
+{
+	background: #F5F5F7;
+}</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_3">
@@ -23,10 +29,14 @@
       <item>
        <widget class="QPushButton" name="pushButton">
         <property name="styleSheet">
-         <string notr="true">background: transparent;</string>
+         <string notr="true">text-align: left;</string>
         </property>
         <property name="text">
-         <string>  Lazy Player</string>
+         <string>Lazy Player</string>
+        </property>
+        <property name="icon">
+         <iconset resource="resources.qrc">
+          <normaloff>:/icons/candy</normaloff>:/icons/candy</iconset>
         </property>
         <property name="flat">
          <bool>true</bool>
@@ -268,7 +278,7 @@ QTabBar::tab:selected
           <item>
            <widget class="QLabel" name="palyingCoverLabel">
             <property name="text">
-             <string>封面</string>
+             <string/>
             </property>
            </widget>
           </item>
@@ -277,14 +287,14 @@ QTabBar::tab:selected
             <item>
              <widget class="QLabel" name="playingNameLabel">
               <property name="text">
-               <string>歌名</string>
+               <string/>
               </property>
              </widget>
             </item>
             <item>
              <widget class="QLabel" name="playingArtistLabel">
               <property name="text">
-               <string>歌手</string>
+               <string/>
               </property>
              </widget>
             </item>
@@ -320,8 +330,71 @@ QTabBar::tab:selected
 {
 	background: transparent;
 	border: none;
+	alternate-background-color: rgb(232, 236, 239);
+}
+
+QHeaderView::section
+{
+	background-color: transparent;
+}
+
+QTableCornerButton::section
+{
+	background:transparent;
 }</string>
             </property>
+            <property name="editTriggers">
+             <set>QAbstractItemView::EditKeyPressed</set>
+            </property>
+            <property name="alternatingRowColors">
+             <bool>true</bool>
+            </property>
+            <property name="selectionMode">
+             <enum>QAbstractItemView::ContiguousSelection</enum>
+            </property>
+            <property name="selectionBehavior">
+             <enum>QAbstractItemView::SelectRows</enum>
+            </property>
+            <property name="verticalScrollMode">
+             <enum>QAbstractItemView::ScrollPerPixel</enum>
+            </property>
+            <property name="horizontalScrollMode">
+             <enum>QAbstractItemView::ScrollPerPixel</enum>
+            </property>
+            <property name="showGrid">
+             <bool>false</bool>
+            </property>
+            <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
+             <bool>true</bool>
+            </attribute>
+            <attribute name="verticalHeaderVisible">
+             <bool>true</bool>
+            </attribute>
+            <column>
+             <property name="text">
+              <string>标题</string>
+             </property>
+            </column>
+            <column>
+             <property name="text">
+              <string>歌手</string>
+             </property>
+            </column>
+            <column>
+             <property name="text">
+              <string>专辑</string>
+             </property>
+            </column>
+            <column>
+             <property name="text">
+              <string>时长</string>
+             </property>
+            </column>
+            <column>
+             <property name="text">
+              <string>热度</string>
+             </property>
+            </column>
            </widget>
           </item>
          </layout>
@@ -456,7 +529,7 @@ QSlider::sub-page:horizontal{ background: qlineargradient(spread:pad, x1:0, y1:1
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>789</width>
+     <width>956</width>
      <height>23</height>
     </rect>
    </property>

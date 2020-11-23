@@ -12,5 +12,6 @@
         <file alias="heart">resources/icons/heart.png</file>
         <file alias="moon">resources/icons/moon.png</file>
         <file alias="heart2">resources/icons/heart2.png</file>
+        <file alias="candy">resources/icons/candy.png</file>
     </qresource>
 </RCC>
