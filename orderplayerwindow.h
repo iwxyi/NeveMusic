@@ -24,6 +24,7 @@
 #include <QListView>
 #include <QStringListModel>
 #include <QScrollBar>
+#include <QMediaPlayer>
 #include "facilemenu.h"
 
 QT_BEGIN_NAMESPACE
@@ -155,10 +156,15 @@ typedef QList<Song> SongList;
 class OrderPlayerWindow : public QMainWindow
 {
     Q_OBJECT
-
 public:
     OrderPlayerWindow(QWidget *parent = nullptr);
-    ~OrderPlayerWindow();
+    ~OrderPlayerWindow() override;
+
+    enum PlayCircleMode
+    {
+        OrderList,
+        SingleCircle
+    };
 
 private slots:
     void on_searchEdit_returnPressed();
@@ -173,17 +179,32 @@ private slots:
 
     void sortSearchResult(int col);
 
+    void on_playProgressSlider_sliderReleased();
+
+    void on_volumeSlider_sliderMoved(int position);
+
+    void on_playButton_clicked();
+
+    void on_volumeButton_clicked();
+
+    void on_circleModeButton_clicked();
+
+    void slotSongPlayEnd();
+
 private:
     void searchMusic(QString key);
     void setSearchResultTable(QList<Song> songs);
     void addFavorite(SongList songs);
     void removeFavorite(SongList songs);
-    void saveSongList(QString key, SongList songs);
+    void saveSongList(QString key, const SongList &songs);
     void restoreSongList(QString key, SongList& songs);
     void setSongModelToView(const SongList& songs, QListView* listView);
+    QString songPath(const Song &song) const;
     bool isSongDownloaded(Song song);
+    QString msecondToString(qint64 msecond);
 
     void startPlaySong(Song song);
+    void playNext();
     void appendOrderSongs(SongList songs);
     void appendNextSongs(SongList songs);
 
@@ -209,6 +230,10 @@ private:
     SongList toDownloadSongs;
     Song playAfterDownloaded;
     Song downloadingSong;
+
+    QMediaPlayer* player;
+    PlayCircleMode circleMode = OrderList;
+    Song playingSong;
 };
 
 class NoFocusDelegate : public QStyledItemDelegate

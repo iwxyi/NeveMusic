@@ -5,7 +5,8 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     : QMainWindow(parent),
       ui(new Ui::OrderPlayerWindow),
       settings("settings.ini", QSettings::Format::IniFormat),
-      musicsFileDir("musics")
+      musicsFileDir("musics"),
+      player(new QMediaPlayer(this))
 {
     ui->setupUi(this);
 
@@ -17,15 +18,6 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     ui->searchResultTable->verticalHeader()->setStyleSheet("QHeaderView { background-color: transparent; }");
     ui->searchResultTable->setItemDelegate(new NoFocusDelegate());
 
-    musicsFileDir.mkpath(musicsFileDir.absolutePath());
-
-    ui->listTabWidget->setCurrentIndex(settings.value("orderplayerwindow/tabIndex").toInt());
-    restoreSongList("music/order", orderSongs);
-    restoreSongList("music/favorite", favoriteSongs);
-    restoreSongList("music/history", historySongs);
-    setSongModelToView(orderSongs, ui->orderSongsListView);
-    setSongModelToView(favoriteSongs, ui->favoriteSongsListView);
-    setSongModelToView(historySongs, ui->playHistoriesListView);
 
     QString vScrollBarSS("QScrollBar:vertical{"        //垂直滑块整体
                          "background: transparent;"  //背景色
@@ -66,17 +58,50 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     ui->favoriteSongsListView->horizontalScrollBar()->setStyleSheet(hScrollBarSS);
     ui->playHistoriesListView->verticalScrollBar()->setStyleSheet(vScrollBarSS);
     ui->playHistoriesListView->horizontalScrollBar()->setStyleSheet(hScrollBarSS);
-
     connect(ui->searchResultTable->horizontalHeader(), SIGNAL(sectionClicked(int)), this, SLOT(sortSearchResult(int)));
 
-    searchMusic("哈哈哈");
+    connect(player, &QMediaPlayer::positionChanged, this, [=](qint64 position){
+        ui->playProgressSlider->setSliderPosition(static_cast<int>(position));
+        ui->playingCurrentTimeLabel->setText(msecondToString(position));
+    });
+    connect(player, &QMediaPlayer::durationChanged, this, [=](qint64 duration){
+        ui->playProgressSlider->setMaximum(static_cast<int>(duration));
+    });
+    connect(player, &QMediaPlayer::mediaStatusChanged, this, [=](QMediaPlayer::MediaStatus status){
+        if (status == QMediaPlayer::EndOfMedia)
+        {
+            slotSongPlayEnd();
+        }
+    });
+
+    musicsFileDir.mkpath(musicsFileDir.absolutePath());
+
+    ui->listTabWidget->setCurrentIndex(settings.value("orderplayerwindow/tabIndex").toInt());
+    restoreSongList("music/order", orderSongs);
+    restoreSongList("music/favorite", favoriteSongs);
+    restoreSongList("music/history", historySongs);
+    setSongModelToView(orderSongs, ui->orderSongsListView);
+    setSongModelToView(favoriteSongs, ui->favoriteSongsListView);
+    setSongModelToView(historySongs, ui->playHistoriesListView);
+
+    int volume = settings.value("music/volume", 50).toInt();
+    bool mute = settings.value("music/mute", false).toBool();
+    if (mute)
+    {
+        volume = 0;
+        ui->volumeButton->setIcon(QIcon(":/icons/mute"));
+        ui->volumeSlider->setSliderPosition(volume);
+    }
+    ui->volumeSlider->setSliderPosition(volume);
+    player->setVolume(volume);
+
+    searchMusic("司夏");
 }
 
 OrderPlayerWindow::~OrderPlayerWindow()
 {
     delete ui;
 }
-
 
 void OrderPlayerWindow::on_searchEdit_returnPressed()
 {
@@ -129,6 +154,9 @@ void OrderPlayerWindow::searchMusic(QString key)
     manager->get(*request);
 }
 
+/**
+ * 搜索结果数据到Table
+ */
 void OrderPlayerWindow::setSearchResultTable(QList<Song> songs)
 {
     QTableWidget* table = ui->searchResultTable;
@@ -160,9 +188,7 @@ void OrderPlayerWindow::setSearchResultTable(QList<Song> songs)
         table->setItem(row, titleCol, createItem(song.name));
         table->setItem(row, artistCol, createItem(song.artistNames));
         table->setItem(row, albumCol, createItem(song.album.name));
-        QString dur = QString("%1:%2").arg(song.duration/1000 / 60, 2, 10, QLatin1Char('0'))
-                .arg(song.duration/1000 % 60, 2, 10, QLatin1Char('0'));
-        table->setItem(row, durationCol, createItem(dur));
+        table->setItem(row, durationCol, createItem(msecondToString(song.duration)));
         table->setItem(row, markCol, createItem(snum(song.mark)));
     }
 }
@@ -172,7 +198,11 @@ void OrderPlayerWindow::addFavorite(SongList songs)
     foreach (auto song, songs)
     {
         if (favoriteSongs.contains(song))
+        {
+            qDebug() << "歌曲已收藏：" << song.simpleString();
             continue;
+        }
+        favoriteSongs.append(song);
         qDebug() << "添加收藏：" << song.simpleString();
     }
     saveSongList("music/favorite", favoriteSongs);
@@ -190,7 +220,7 @@ void OrderPlayerWindow::removeFavorite(SongList songs)
     setSongModelToView(favoriteSongs, ui->favoriteSongsListView);
 }
 
-void OrderPlayerWindow::saveSongList(QString key, SongList songs)
+void OrderPlayerWindow::saveSongList(QString key, const SongList &songs)
 {
     QJsonArray array;
     foreach (Song song, songs)
@@ -205,6 +235,9 @@ void OrderPlayerWindow::restoreSongList(QString key, SongList &songs)
         songs.append(Song::fromJson(val.toObject()));
 }
 
+/**
+ * 更新Model到ListView
+ */
 void OrderPlayerWindow::setSongModelToView(const SongList &songs, QListView *listView)
 {
     QStringList sl;
@@ -219,9 +252,26 @@ void OrderPlayerWindow::setSongModelToView(const SongList &songs, QListView *lis
     listView->setModel(model);
 }
 
+/**
+ * 音乐文件的路径
+ */
+QString OrderPlayerWindow::songPath(const Song &song) const
+{
+    return musicsFileDir.absoluteFilePath(snum(song.id) + ".mp3");
+}
+
+/**
+ * 歌曲是否已经被下载了
+ */
 bool OrderPlayerWindow::isSongDownloaded(Song song)
 {
-    return QFileInfo(musicsFileDir.absoluteFilePath(snum(song.id) + ".mp3")).exists();
+    return QFileInfo(songPath(song)).exists();
+}
+
+QString OrderPlayerWindow::msecondToString(qint64 msecond)
+{
+    return QString("%1:%2").arg(msecond/1000 / 60, 2, 10, QLatin1Char('0'))
+                    .arg(msecond/1000 % 60, 2, 10, QLatin1Char('0'));
 }
 
 void OrderPlayerWindow::showEvent(QShowEvent *)
@@ -236,12 +286,19 @@ void OrderPlayerWindow::closeEvent(QCloseEvent *)
     settings.setValue("orderplayerwindow/state", this->saveState());
 }
 
+/**
+ * 搜索结果双击
+ * 还没想好怎么做……
+ */
 void OrderPlayerWindow::on_searchResultTable_cellActivated(int row, int)
 {
     Song song = searchResultSongs.at(row);
-
+    appendOrderSongs(SongList{searchResultSongs.at(row)});
 }
 
+/**
+ * 搜索结果的菜单
+ */
 void OrderPlayerWindow::on_searchResultTable_customContextMenuRequested(const QPoint &)
 {
     auto items = ui->searchResultTable->selectedItems();
@@ -283,6 +340,9 @@ void OrderPlayerWindow::on_searchResultTable_customContextMenuRequested(const QP
     menu->exec();
 }
 
+/**
+ * 立即播放
+ */
 void OrderPlayerWindow::startPlaySong(Song song)
 {
     if (isSongDownloaded(song))
@@ -296,6 +356,23 @@ void OrderPlayerWindow::startPlaySong(Song song)
     }
 }
 
+void OrderPlayerWindow::playNext()
+{
+    if (!orderSongs.size()) // 播放列表全部结束
+    {
+        return ;
+    }
+
+    Song song = orderSongs.takeFirst();
+    saveSongList("music/order", orderSongs);
+    setSongModelToView(orderSongs, ui->orderSongsListView);
+
+    startPlaySong(song);
+}
+
+/**
+ * 添加到点歌队列（末尾）
+ */
 void OrderPlayerWindow::appendOrderSongs(SongList songs)
 {
     foreach (Song song, songs)
@@ -310,6 +387,9 @@ void OrderPlayerWindow::appendOrderSongs(SongList songs)
     downloadNext();
 }
 
+/**
+ * 下一首播放（点歌队列置顶）
+ */
 void OrderPlayerWindow::appendNextSongs(SongList songs)
 {
     foreach (Song song, songs)
@@ -329,6 +409,7 @@ void OrderPlayerWindow::appendNextSongs(SongList songs)
  */
 void OrderPlayerWindow::playLocalSong(Song song)
 {
+    qDebug() << "开始播放：" << song.simpleString();
     if (!isSongDownloaded(song))
     {
         qDebug() << "error: 未下载歌曲" << song.simpleString() << "开始下载";
@@ -337,10 +418,22 @@ void OrderPlayerWindow::playLocalSong(Song song)
         return ;
     }
 
-    // 开始播放
+    // 设置信息
+    ui->playingNameLabel->setText(song.name);
+    ui->playingArtistLabel->setText(song.artistNames);
+    ui->playingAllTimeLabel->setText(msecondToString(song.duration));
 
+    // 开始播放
+    playingSong = song;
+    player->setMedia(QUrl::fromLocalFile(songPath(song)));
+    player->setPosition(0);
+    player->play();
+    ui->playButton->setIcon(QIcon(":/icons/pause"));
 }
 
+/**
+ * 放入下载队列，准备下载（并不立即下载）
+ */
 void OrderPlayerWindow::addDownloadSong(Song song)
 {
     if (isSongDownloaded(song) || toDownloadSongs.contains(song) || downloadingSong == song)
@@ -348,6 +441,9 @@ void OrderPlayerWindow::addDownloadSong(Song song)
     toDownloadSongs.append(song);
 }
 
+/**
+ * 放入下载队列、或一首歌下载完毕，开始下载下一个
+ */
 void OrderPlayerWindow::downloadNext()
 {
     if (downloadingSong.isValid() || !toDownloadSongs.size())
@@ -417,11 +513,14 @@ void OrderPlayerWindow::downloadSong(Song song)
         QByteArray baData1 = reply1->readAll();
         qDebug() << "下载结束：" << baData1.size();
 
-        QFile file(musicsFileDir.absoluteFilePath(snum(song.id)+".mp3"));
+        QFile file(songPath(song));
         file.open(QIODevice::WriteOnly);
         file.write(baData1);
         file.flush();
         file.close();
+
+        if (playAfterDownloaded == song)
+            playLocalSong(song);
 
         downloadingSong = Song();
         downloadNext();
@@ -429,12 +528,104 @@ void OrderPlayerWindow::downloadSong(Song song)
     manager->get(*request);
 }
 
+/**
+ * 列表项改变
+ */
 void OrderPlayerWindow::on_listTabWidget_currentChanged(int index)
 {
     settings.setValue("orderplayerwindow/tabIndex", index);
 }
 
+/**
+ * 改变排序
+ */
 void OrderPlayerWindow::sortSearchResult(int col)
 {
+    Q_UNUSED(col)
+}
 
+/**
+ * 播放进度条被拖动
+ */
+void OrderPlayerWindow::on_playProgressSlider_sliderReleased()
+{
+    int position = ui->playProgressSlider->sliderPosition();
+    player->setPosition(position);
+}
+
+/**
+ * 音量进度被拖动
+ */
+void OrderPlayerWindow::on_volumeSlider_sliderMoved(int position)
+{
+    player->setVolume(position);
+    settings.setValue("music/volume", position);
+}
+
+/**
+ * 暂停/播放/随机推荐
+ */
+void OrderPlayerWindow::on_playButton_clicked()
+{
+    if (player->state() == QMediaPlayer::PlayingState) // 暂停播放
+    {
+        player->pause();
+        ui->playButton->setIcon(QIcon(":/icons/play"));
+    }
+    else // 开始播放
+    {
+        if (!playingSong.isValid())
+        {
+            playNext();
+            return ;
+        }
+        player->play();
+        ui->playButton->setIcon(QIcon(":/icons/pause"));
+    }
+}
+
+/**
+ * 静音/恢复音量
+ */
+void OrderPlayerWindow::on_volumeButton_clicked()
+{
+    int volume = ui->volumeSlider->sliderPosition();
+    if (volume == 0) // 恢复音量
+    {
+        volume = settings.value("music/volume", 50).toInt();
+        if (volume == 0)
+            volume = 50;
+        ui->volumeButton->setIcon(QIcon(":/icons/volume"));
+        ui->volumeSlider->setSliderPosition(volume);
+        settings.setValue("music/mute", false);
+    }
+    else // 静音
+    {
+        ui->volumeButton->setIcon(QIcon(":/icons/mute"));
+        ui->volumeSlider->setSliderPosition(0);
+        settings.setValue("music/mute", true);
+    }
+    player->setVolume(volume);
+}
+
+/**
+ * 循环方式
+ */
+void OrderPlayerWindow::on_circleModeButton_clicked()
+{
+
+}
+
+void OrderPlayerWindow::slotSongPlayEnd()
+{
+    // 根据循环模式
+    if (circleMode == OrderList)
+    {
+        playNext();
+    }
+    else if (circleMode == SingleCircle)
+    {
+        // 不用管，会自己放下去
+        player->setPosition(0);
+    }
 }

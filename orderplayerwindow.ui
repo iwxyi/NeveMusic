@@ -297,6 +297,11 @@ QTabBar::tab:selected
             </item>
             <item>
              <widget class="QLabel" name="playingArtistLabel">
+              <property name="styleSheet">
+               <string notr="true">QLabel{
+	color:gray;
+}</string>
+              </property>
               <property name="text">
                <string/>
               </property>
@@ -453,7 +458,7 @@ QTableCornerButton::section
        </widget>
       </item>
       <item>
-       <widget class="QSlider" name="horizontalSlider">
+       <widget class="QSlider" name="playProgressSlider">
         <property name="styleSheet">
          <string notr="true">QSlider{ border-color: #bcbcbc; }
 QSlider::groove:horizontal { border: 1px solid #999999; height: 1px; margin: 0px 0; left: 5px; right: 5px; }
@@ -502,6 +507,12 @@ QSlider::handle:horizontal { border: 0px ; border-image: url(:/icons/heart2); wi
 QSlider::add-page:horizontal{ background: qlineargradient(spread:pad, x1:0, y1:1, x2:0, y2:0, stop:0 #bcbcbc, stop:0.25 #bcbcbc, stop:0.5 #bcbcbc, stop:1 #bcbcbc); } 
 QSlider::sub-page:horizontal{ background: qlineargradient(spread:pad, x1:0, y1:1, x2:0, y2:0, stop:0 #439cf3, stop:0.25 #439cf3, stop:0.5 #439cf3, stop:1 #439cf3); }</string>
         </property>
+        <property name="maximum">
+         <number>100</number>
+        </property>
+        <property name="singleStep">
+         <number>10</number>
+        </property>
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
         </property>
@@ -514,7 +525,7 @@ QSlider::sub-page:horizontal{ background: qlineargradient(spread:pad, x1:0, y1:1
         </property>
         <property name="icon">
          <iconset resource="resources.qrc">
-          <normaloff>:/icons/order_circle</normaloff>:/icons/order_circle</iconset>
+          <normaloff>:/icons/order_list</normaloff>:/icons/order_list</iconset>
         </property>
         <property name="autoDefault">
          <bool>false</bool>
@@ -537,7 +548,7 @@ QSlider::sub-page:horizontal{ background: qlineargradient(spread:pad, x1:0, y1:1
      <x>0</x>
      <y>0</y>
      <width>956</width>
-     <height>23</height>
+     <height>26</height>
     </rect>
    </property>
   </widget>
