@@ -1,0 +1,16 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file alias="volume">resources/icons/volume.png</file>
+        <file alias="list_circle">resources/icons/list_circle.png</file>
+        <file alias="order_circle">resources/icons/order_circle.png</file>
+        <file alias="random_circle">resources/icons/random_circle.png</file>
+        <file alias="single_circle">resources/icons/single_circle.png</file>
+        <file alias="pause">resources/icons/pause.png</file>
+        <file alias="play">resources/icons/play.png</file>
+        <file alias="search">resources/icons/search.png</file>
+        <file alias="egg">resources/icons/egg.png</file>
+        <file alias="heart">resources/icons/heart.png</file>
+        <file alias="moon">resources/icons/moon.png</file>
+        <file alias="heart2">resources/icons/heart2.png</file>
+    </qresource>
+</RCC>
