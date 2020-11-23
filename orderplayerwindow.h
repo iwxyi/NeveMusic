@@ -21,6 +21,10 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QStyledItemDelegate>
+#include <QListView>
+#include <QStringListModel>
+#include <QScrollBar>
+#include "facilemenu.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class OrderPlayerWindow; }
@@ -46,6 +50,15 @@ struct Artist
         artist.faceUrl = JVAL_STR(img1v1Url);
         return artist;
     }
+
+    QJsonObject toJson() const
+    {
+        QJsonObject json;
+        json.insert("id", id);
+        json.insert("name", name);
+        json.insert("faceUrl", faceUrl);
+        return json;
+    }
 };
 
 struct Album
@@ -63,6 +76,16 @@ struct Album
         album.size = JVAL_INT(size);
         album.mark = JVAL_INT(mark);
         return album;
+    }
+
+    QJsonObject toJson() const
+    {
+        QJsonObject json;
+        json.insert("id", id);
+        json.insert("name", name);
+        json.insert("size", size);
+        json.insert("mark", mark);
+        return json;
     }
 };
 
@@ -95,7 +118,39 @@ struct Song
         song.mark = JVAL_INT(mark);
         return song;
     }
+
+    QJsonObject toJson() const
+    {
+        QJsonObject json;
+        json.insert("id", id);
+        json.insert("name", name);
+        json.insert("duration", duration);
+        json.insert("mark", mark);
+        QJsonArray array;
+        foreach (Artist artist, artists)
+            array.append(artist.toJson());
+        json.insert("artists", array);
+        json.insert("album", album.toJson());
+        return json;
+    }
+
+    bool isValid() const
+    {
+        return id;
+    }
+
+    bool operator==(const Song& song)
+    {
+        return this->id == song.id;
+    }
+
+    QString simpleString() const
+    {
+        return name + " - " + artistNames;
+    }
 };
+
+typedef QList<Song> SongList;
 
 class OrderPlayerWindow : public QMainWindow
 {
@@ -110,9 +165,26 @@ private slots:
 
     void on_searchButton_clicked();
 
+    void on_searchResultTable_cellActivated(int row, int);
+
+    void on_searchResultTable_customContextMenuRequested(const QPoint &);
+
+    void on_listTabWidget_currentChanged(int index);
+
 private:
     void searchMusic(QString key);
     void setSearchResultTable(QList<Song> songs);
+    void addFavorite(SongList songs);
+    void removeFavorite(SongList songs);
+    void saveSongList(QString key, SongList songs);
+    void restoreSongList(QString key, SongList& songs);
+    void setSongModelToView(const SongList& songs, QListView* listView);
+
+    void startPlaySong(Song song);
+    void appendOrderSongs(SongList songs);
+    void appendNextSongs(SongList songs);
+
+    void downloadSong(Song song, bool play = false);
 
 protected:
     void showEvent(QShowEvent*) override;
@@ -121,7 +193,12 @@ protected:
 private:
     Ui::OrderPlayerWindow *ui;
     QSettings settings;
+    QDir musicsFileDir;
     QList<Song> searchResultSongs;
+
+    SongList orderSongs;
+    SongList favoriteSongs;
+    SongList historySongs;
 };
 
 class NoFocusDelegate : public QStyledItemDelegate
@@ -135,11 +212,17 @@ public:
     void paint(QPainter* painter, const QStyleOptionViewItem & option, const QModelIndex &index) const
     {
         QStyleOptionViewItem itemOption(option);
-        if (itemOption.state & QStyle::State_HasFocus)
+        if (itemOption.state & QStyle::State_Selected)
         {
-            itemOption.state = itemOption.state ^ QStyle::State_HasFocus;
+            painter->fillRect(option.rect, QColor(100, 149, 237, 88));
+            /*int radius = option.rect.height() / 2;
+            QPainterPath path;
+            path.addRoundedRect(option.rect, radius, radius);
+            painter->fillPath(path, QColor(100, 149, 237, 128));*/
         }
-        QStyledItemDelegate::paint(painter, itemOption, index);
+        QRect rect = option.rect;
+        rect.setLeft(rect.left() + 4);
+        painter->drawText(rect, Qt::AlignLeft | Qt::AlignVCenter, index.data(Qt::DisplayRole).toString());
     }
 };
 

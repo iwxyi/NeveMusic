@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>OrderPlayerWindow</string>
+   <string>Lazy点歌姬</string>
   </property>
   <property name="styleSheet">
    <string notr="true">QMainWindow
@@ -32,7 +32,7 @@
          <string notr="true">text-align: left;</string>
         </property>
         <property name="text">
-         <string>Lazy Player</string>
+         <string>Lazy点歌姬</string>
         </property>
         <property name="icon">
          <iconset resource="resources.qrc">
@@ -158,7 +158,7 @@ QTabBar::tab:selected
 }</string>
           </property>
           <property name="currentIndex">
-           <number>0</number>
+           <number>1</number>
           </property>
           <widget class="QWidget" name="tab">
            <property name="styleSheet">
@@ -169,7 +169,7 @@ QTabBar::tab:selected
 }</string>
            </property>
            <attribute name="title">
-            <string>点歌</string>
+            <string>列表</string>
            </attribute>
            <layout class="QVBoxLayout" name="verticalLayout_4">
             <property name="leftMargin">
@@ -185,9 +185,9 @@ QTabBar::tab:selected
              <number>0</number>
             </property>
             <item>
-             <widget class="QListWidget" name="orderSongsListWidget">
+             <widget class="QListView" name="orderSongsListView">
               <property name="styleSheet">
-               <string notr="true">QListWidget
+               <string notr="true">#orderSongsListView
 {
 	background: transparent;
 	border: none;
@@ -222,13 +222,17 @@ QTabBar::tab:selected
              <number>0</number>
             </property>
             <item>
-             <widget class="QListWidget" name="favoriteSongsListWidget">
+             <widget class="QListView" name="favoriteSongsListView">
               <property name="styleSheet">
-               <string notr="true">QListWidget
+               <string notr="true">#favoriteSongsListView
 {
 	background: transparent;
 	border: none;
-}</string>
+}
+
+
+
+</string>
               </property>
              </widget>
             </item>
@@ -259,9 +263,9 @@ QTabBar::tab:selected
              <number>0</number>
             </property>
             <item>
-             <widget class="QListWidget" name="playHistoriesListWidget">
+             <widget class="QListView" name="playHistoriesListView">
               <property name="styleSheet">
-               <string notr="true">QListWidget
+               <string notr="true">#playHistoriesListView
 {
 	background: transparent;
 	border: none;
@@ -325,6 +329,9 @@ QTabBar::tab:selected
           </property>
           <item>
            <widget class="QTableWidget" name="searchResultTable">
+            <property name="contextMenuPolicy">
+             <enum>Qt::CustomContextMenu</enum>
+            </property>
             <property name="styleSheet">
              <string notr="true">QTableWidget
 {
@@ -350,7 +357,7 @@ QTableCornerButton::section
              <bool>true</bool>
             </property>
             <property name="selectionMode">
-             <enum>QAbstractItemView::ContiguousSelection</enum>
+             <enum>QAbstractItemView::ExtendedSelection</enum>
             </property>
             <property name="selectionBehavior">
              <enum>QAbstractItemView::SelectRows</enum>
@@ -368,7 +375,7 @@ QTableCornerButton::section
              <bool>true</bool>
             </attribute>
             <attribute name="verticalHeaderVisible">
-             <bool>true</bool>
+             <bool>false</bool>
             </attribute>
             <column>
              <property name="text">
@@ -534,7 +541,6 @@ QSlider::sub-page:horizontal{ background: qlineargradient(spread:pad, x1:0, y1:1
     </rect>
    </property>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
  </widget>
  <resources>
   <include location="resources.qrc"/>

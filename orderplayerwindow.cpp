@@ -4,7 +4,8 @@
 OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     : QMainWindow(parent),
       ui(new Ui::OrderPlayerWindow),
-      settings("settings.ini", QSettings::Format::IniFormat)
+      settings("settings.ini", QSettings::Format::IniFormat),
+      musicsFileDir("musics")
 {
     ui->setupUi(this);
 
@@ -15,6 +16,59 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     header->setStyleSheet("QHeaderView { background-color: transparent; }");
     ui->searchResultTable->verticalHeader()->setStyleSheet("QHeaderView { background-color: transparent; }");
     ui->searchResultTable->setItemDelegate(new NoFocusDelegate());
+
+    musicsFileDir.mkpath(musicsFileDir.absolutePath());
+    qDebug() << musicsFileDir.absolutePath();
+
+    ui->listTabWidget->setCurrentIndex(settings.value("orderplayerwindow/tabIndex").toInt());
+    restoreSongList("music/order", orderSongs);
+    restoreSongList("music/favorite", favoriteSongs);
+    restoreSongList("music/history", historySongs);
+    setSongModelToView(orderSongs, ui->orderSongsListView);
+    setSongModelToView(favoriteSongs, ui->favoriteSongsListView);
+    setSongModelToView(historySongs, ui->playHistoriesListView);
+
+    QString vScrollBarSS("QScrollBar:vertical{"        //垂直滑块整体
+                         "background: transparent;"  //背景色
+                         "padding-top:0px;"    //上预留位置（放置向上箭头）
+                         "padding-bottom:0px;" //下预留位置（放置向下箭头）
+                         "padding-left:3px;"    //左预留位置（美观）
+                         "padding-right:3px;"   //右预留位置（美观）
+                         "border-left:1px solid #d7d7d7;}"//左分割线
+                         "QScrollBar::handle:vertical{"//滑块样式
+                         "background:#dbdbdb;"  //滑块颜色
+                         "border-radius:4px;"   //边角圆润
+                         "min-height:40px;}"    //滑块最小高度
+                         "QScrollBar::handle:vertical:hover{"//鼠标触及滑块样式
+                         "background:#d0d0d0;}" //滑块颜色
+                         "QScrollBar::add-line:vertical{"//向下箭头样式
+                         "background:transparent;}"
+                         "QScrollBar::sub-line:vertical{"//向上箭头样式
+                         "background:transparent;}");
+    QString hScrollBarSS("QScrollBar:horizontal{"
+                          "background:transparent;"
+                          "padding-top:3px;"
+                          "padding-bottom:3px;"
+                          "padding-left:0px;"
+                          "padding-right:0px;}"
+                          "QScrollBar::handle:horizontal{"
+                          "background:#dbdbdb;"
+                          "border-radius:2px;"
+                          "min-width:40px;}"
+                          "QScrollBar::handle:horizontal:hover{"
+                          "background:#d0d0d0;}"
+                          "QScrollBar::add-line:horizontal{"
+                          "background: transparent;}"
+                          "QScrollBar::sub-line:horizontal{"
+                          "background:transparent;}");
+    ui->orderSongsListView->verticalScrollBar()->setStyleSheet(vScrollBarSS);
+    ui->orderSongsListView->horizontalScrollBar()->setStyleSheet(hScrollBarSS);
+    ui->favoriteSongsListView->verticalScrollBar()->setStyleSheet(vScrollBarSS);
+    ui->favoriteSongsListView->horizontalScrollBar()->setStyleSheet(hScrollBarSS);
+    ui->playHistoriesListView->verticalScrollBar()->setStyleSheet(vScrollBarSS);
+    ui->playHistoriesListView->horizontalScrollBar()->setStyleSheet(hScrollBarSS);
+
+    searchMusic("哈哈哈");
 }
 
 OrderPlayerWindow::~OrderPlayerWindow()
@@ -112,6 +166,58 @@ void OrderPlayerWindow::setSearchResultTable(QList<Song> songs)
     }
 }
 
+void OrderPlayerWindow::addFavorite(SongList songs)
+{
+    foreach (auto song, songs)
+    {
+        if (favoriteSongs.contains(song))
+            continue;
+        qDebug() << "添加收藏：" << song.simpleString();
+    }
+    saveSongList("music/favorite", favoriteSongs);
+    setSongModelToView(favoriteSongs, ui->favoriteSongsListView);
+}
+
+void OrderPlayerWindow::removeFavorite(SongList songs)
+{
+    foreach (Song song, songs)
+    {
+        favoriteSongs.removeOne(song);
+        qDebug() << "取消收藏：" << song.simpleString();
+    }
+    saveSongList("music/favorite", favoriteSongs);
+    setSongModelToView(favoriteSongs, ui->favoriteSongsListView);
+}
+
+void OrderPlayerWindow::saveSongList(QString key, SongList songs)
+{
+    QJsonArray array;
+    foreach (Song song, songs)
+        array.append(song.toJson());
+    settings.setValue(key, array);
+}
+
+void OrderPlayerWindow::restoreSongList(QString key, SongList &songs)
+{
+    QJsonArray array = settings.value(key).toJsonArray();
+    foreach (QJsonValue val, array)
+        songs.append(Song::fromJson(val.toObject()));
+}
+
+void OrderPlayerWindow::setSongModelToView(const SongList &songs, QListView *listView)
+{
+    QStringList sl;
+    foreach (Song song, songs)
+    {
+        sl << song.simpleString();
+    }
+    QAbstractItemModel *model = listView->model();
+    if (model)
+        delete model;
+    model = new QStringListModel(sl);
+    listView->setModel(model);
+}
+
 void OrderPlayerWindow::showEvent(QShowEvent *)
 {
     restoreGeometry(settings.value("orderplayerwindow/geometry").toByteArray());
@@ -122,4 +228,90 @@ void OrderPlayerWindow::closeEvent(QCloseEvent *)
 {
     settings.setValue("orderplayerwindow/geometry", this->saveGeometry());
     settings.setValue("orderplayerwindow/state", this->saveState());
+}
+
+void OrderPlayerWindow::on_searchResultTable_cellActivated(int row, int)
+{
+    Song song = searchResultSongs.at(row);
+
+}
+
+void OrderPlayerWindow::on_searchResultTable_customContextMenuRequested(const QPoint &)
+{
+    auto items = ui->searchResultTable->selectedItems();
+    QList<Song> songs;
+    foreach (auto item, items)
+    {
+        int row = ui->searchResultTable->row(item);
+        int col = ui->searchResultTable->column(item);
+        if (col != 0)
+            continue;
+        songs.append(searchResultSongs.at(row));
+    }
+    int row = ui->searchResultTable->currentRow();
+    Song currentSong;
+    if (row > -1)
+        currentSong = searchResultSongs.at(row);
+
+    FacileMenu* menu = new FacileMenu(this);
+    menu->addAction("立即播放", [=]{
+        startPlaySong(currentSong);
+    })->disable(songs.size() != 1);
+
+    menu->addAction("下一首播放", [=]{
+        appendNextSongs(songs);
+    })->disable(!currentSong.isValid());
+
+    menu->addAction("添加到播放列表", [=]{
+        appendOrderSongs(songs);
+    })->disable(!currentSong.isValid());
+
+    menu->split()->addAction("收藏", [=]{
+        if (!favoriteSongs.contains(currentSong))
+            addFavorite(songs);
+        else
+            removeFavorite(songs);
+    })->disable(!currentSong.isValid())
+            ->text(favoriteSongs.contains(currentSong), "从收藏中移除", "添加到收藏");
+
+    menu->exec();
+}
+
+void OrderPlayerWindow::startPlaySong(Song song)
+{
+
+}
+
+void OrderPlayerWindow::appendOrderSongs(SongList songs)
+{
+    foreach (Song song, songs)
+    {
+        if (orderSongs.contains(song))
+            continue;
+        orderSongs.append(song);
+    }
+    saveSongList("music/order", orderSongs);
+    setSongModelToView(orderSongs, ui->orderSongsListView);
+}
+
+void OrderPlayerWindow::appendNextSongs(SongList songs)
+{
+    foreach (Song song, songs)
+    {
+        if (orderSongs.contains(song))
+            orderSongs.removeOne(song);
+        orderSongs.insert(0, song);
+    }
+    saveSongList("music/order", orderSongs);
+    setSongModelToView(orderSongs, ui->orderSongsListView);
+}
+
+void OrderPlayerWindow::downloadSong(Song song, bool play)
+{
+
+}
+
+void OrderPlayerWindow::on_listTabWidget_currentChanged(int index)
+{
+    settings.setValue("orderplayerwindow/tabIndex", index);
 }
