@@ -171,6 +171,8 @@ private slots:
 
     void on_searchButton_clicked();
 
+    void slotSearchAndAutoAppend(QString key);
+
     void on_searchResultTable_cellActivated(int row, int);
 
     void on_searchResultTable_customContextMenuRequested(const QPoint &);
@@ -191,6 +193,12 @@ private slots:
 
     void slotSongPlayEnd();
 
+    void on_orderSongsListView_customContextMenuRequested(const QPoint &);
+
+    void on_favoriteSongsListView_customContextMenuRequested(const QPoint &);
+
+    void on_historySongsListView_customContextMenuRequested(const QPoint &);
+
 private:
     void searchMusic(QString key);
     void setSearchResultTable(QList<Song> songs);
@@ -202,6 +210,8 @@ private:
     QString songPath(const Song &song) const;
     bool isSongDownloaded(Song song);
     QString msecondToString(qint64 msecond);
+    void activeSong(Song song);
+    bool isNotPlaying() const;
 
     void startPlaySong(Song song);
     void playNext();
@@ -234,6 +244,9 @@ private:
     QMediaPlayer* player;
     PlayCircleMode circleMode = OrderList;
     Song playingSong;
+
+    bool doubleClickToPlay = false; // 双击是立即播放，还是添加到列表
+    bool searchAndAppend = false;
 };
 
 class NoFocusDelegate : public QStyledItemDelegate
