@@ -162,7 +162,7 @@ QTabBar::tab:selected
 }</string>
           </property>
           <property name="currentIndex">
-           <number>2</number>
+           <number>3</number>
           </property>
           <widget class="QWidget" name="tab">
            <property name="styleSheet">
@@ -367,9 +367,15 @@ QTabBar::tab:selected
          </widget>
         </item>
         <item>
-         <layout class="QHBoxLayout" name="horizontalLayout_5">
+         <layout class="QHBoxLayout" name="horizontalLayout_5" stretch="0,1">
           <item>
            <widget class="QLabel" name="playingCoverLabel">
+            <property name="minimumSize">
+             <size>
+              <width>50</width>
+              <height>50</height>
+             </size>
+            </property>
             <property name="text">
              <string/>
             </property>

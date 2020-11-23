@@ -201,6 +201,14 @@ private slots:
 
     void on_normalSongsListView_customContextMenuRequested(const QPoint &pos);
 
+    void on_orderSongsListView_activated(const QModelIndex &index);
+
+    void on_favoriteSongsListView_activated(const QModelIndex &index);
+
+    void on_normalSongsListView_activated(const QModelIndex &index);
+
+    void on_historySongsListView_activated(const QModelIndex &index);
+
 private:
     void searchMusic(QString key);
     void setSearchResultTable(QList<Song> songs);
@@ -210,6 +218,8 @@ private:
     void restoreSongList(QString key, SongList& songs);
     void setSongModelToView(const SongList& songs, QListView* listView);
     QString songPath(const Song &song) const;
+    QString lyricPath(const Song &song) const;
+    QString coverPath(const Song &song) const;
     bool isSongDownloaded(Song song);
     QString msecondToString(qint64 msecond);
     void activeSong(Song song);
@@ -224,10 +234,19 @@ private:
     void addDownloadSong(Song song);
     void downloadNext();
     void downloadSong(Song song);
+    void downloadSongLyric(Song song);
+    void downloadSongCover(Song song);
+    void setCurrentLyric(QString lyric);
 
 protected:
     void showEvent(QShowEvent*) override;
     void closeEvent(QCloseEvent*) override;
+
+signals:
+    void signalSongDownloadFinished(Song song);
+    void signalLyricDownloadFinished(Song song);
+    void signalCoverDownloadFinished(Song song);
+    void signalSongPlayFinished(Song song);
 
 private:
     Ui::OrderPlayerWindow *ui;
