@@ -14,7 +14,7 @@
    <string>Lazy点歌姬</string>
   </property>
   <property name="windowIcon">
-   <iconset resource="resources.qrc">
+   <iconset>
     <normaloff>:/icons/candy</normaloff>:/icons/candy</iconset>
   </property>
   <property name="styleSheet">
@@ -39,7 +39,7 @@
          <string>Lazy点歌姬</string>
         </property>
         <property name="icon">
-         <iconset resource="resources.qrc">
+         <iconset>
           <normaloff>:/icons/candy</normaloff>:/icons/candy</iconset>
         </property>
         <property name="flat">
@@ -90,7 +90,7 @@
             <string/>
            </property>
            <property name="icon">
-            <iconset resource="resources.qrc">
+            <iconset>
              <normaloff>:/icons/search</normaloff>:/icons/search</iconset>
            </property>
            <property name="flat">
@@ -162,7 +162,7 @@ QTabBar::tab:selected
 }</string>
           </property>
           <property name="currentIndex">
-           <number>3</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="tab">
            <property name="styleSheet">
@@ -195,6 +195,55 @@ QTabBar::tab:selected
               </property>
               <property name="styleSheet">
                <string notr="true">#orderSongsListView
+{
+	background: transparent;
+	border: none;
+}</string>
+              </property>
+              <property name="editTriggers">
+               <set>QAbstractItemView::NoEditTriggers</set>
+              </property>
+              <property name="selectionMode">
+               <enum>QAbstractItemView::ExtendedSelection</enum>
+              </property>
+              <property name="selectionBehavior">
+               <enum>QAbstractItemView::SelectRows</enum>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="tab_4">
+           <property name="styleSheet">
+            <string notr="true">QWidget
+{
+	background: transparent;
+	border: none;
+}</string>
+           </property>
+           <attribute name="title">
+            <string>常时</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="verticalLayout_9">
+            <property name="leftMargin">
+             <number>0</number>
+            </property>
+            <property name="topMargin">
+             <number>0</number>
+            </property>
+            <property name="rightMargin">
+             <number>0</number>
+            </property>
+            <property name="bottomMargin">
+             <number>0</number>
+            </property>
+            <item>
+             <widget class="QListView" name="normalSongsListView">
+              <property name="contextMenuPolicy">
+               <enum>Qt::CustomContextMenu</enum>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">#playHistoriesListView
 {
 	background: transparent;
 	border: none;
@@ -255,55 +304,6 @@ QTabBar::tab:selected
               </property>
               <property name="editTriggers">
                <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed</set>
-              </property>
-              <property name="selectionMode">
-               <enum>QAbstractItemView::ExtendedSelection</enum>
-              </property>
-              <property name="selectionBehavior">
-               <enum>QAbstractItemView::SelectRows</enum>
-              </property>
-             </widget>
-            </item>
-           </layout>
-          </widget>
-          <widget class="QWidget" name="tab_4">
-           <property name="styleSheet">
-            <string notr="true">QWidget
-{
-	background: transparent;
-	border: none;
-}</string>
-           </property>
-           <attribute name="title">
-            <string>常时</string>
-           </attribute>
-           <layout class="QVBoxLayout" name="verticalLayout_9">
-            <property name="leftMargin">
-             <number>0</number>
-            </property>
-            <property name="topMargin">
-             <number>0</number>
-            </property>
-            <property name="rightMargin">
-             <number>0</number>
-            </property>
-            <property name="bottomMargin">
-             <number>0</number>
-            </property>
-            <item>
-             <widget class="QListView" name="normalSongsListView">
-              <property name="contextMenuPolicy">
-               <enum>Qt::CustomContextMenu</enum>
-              </property>
-              <property name="styleSheet">
-               <string notr="true">#playHistoriesListView
-{
-	background: transparent;
-	border: none;
-}</string>
-              </property>
-              <property name="editTriggers">
-               <set>QAbstractItemView::NoEditTriggers</set>
               </property>
               <property name="selectionMode">
                <enum>QAbstractItemView::ExtendedSelection</enum>
@@ -537,7 +537,7 @@ QTableCornerButton::section
          <string/>
         </property>
         <property name="icon">
-         <iconset resource="resources.qrc">
+         <iconset>
           <normaloff>:/icons/play</normaloff>:/icons/play</iconset>
         </property>
         <property name="flat">
@@ -579,7 +579,7 @@ QSlider::sub-page:horizontal{ background: qlineargradient(spread:pad, x1:0, y1:1
          <string/>
         </property>
         <property name="icon">
-         <iconset resource="resources.qrc">
+         <iconset>
           <normaloff>:/icons/volume</normaloff>:/icons/volume</iconset>
         </property>
         <property name="flat">
@@ -622,7 +622,7 @@ QSlider::sub-page:horizontal{ background: qlineargradient(spread:pad, x1:0, y1:1
          <string/>
         </property>
         <property name="icon">
-         <iconset resource="resources.qrc">
+         <iconset>
           <normaloff>:/icons/order_list</normaloff>:/icons/order_list</iconset>
         </property>
         <property name="autoDefault">
@@ -646,13 +646,11 @@ QSlider::sub-page:horizontal{ background: qlineargradient(spread:pad, x1:0, y1:1
      <x>0</x>
      <y>0</y>
      <width>956</width>
-     <height>26</height>
+     <height>23</height>
     </rect>
    </property>
   </widget>
  </widget>
- <resources>
-  <include location="resources.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>

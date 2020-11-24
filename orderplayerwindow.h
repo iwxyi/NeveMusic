@@ -99,6 +99,8 @@ struct Song
     QList<Artist> artists;
     Album album;
     QString artistNames;
+    qint64 addTime;
+    QString addBy;
 
     static Song fromJson(QJsonObject json)
     {
@@ -117,6 +119,10 @@ struct Song
         song.album = Album::fromJson(json.value("album").toObject());
         song.duration = JVAL_INT(duration);
         song.mark = JVAL_INT(mark);
+        if (json.contains("addTime"))
+            song.addTime = JVAL_LONG(addTime);
+        if (json.contains("addBy"))
+            song.addBy = JVAL_STR(addBy);
         return song;
     }
 
@@ -132,6 +138,10 @@ struct Song
             array.append(artist.toJson());
         json.insert("artists", array);
         json.insert("album", album.toJson());
+        if (addTime)
+            json.insert("addTime", addTime);
+        if (!addBy.isEmpty())
+            json.insert("addBy", addBy);
         return json;
     }
 
@@ -148,6 +158,12 @@ struct Song
     QString simpleString() const
     {
         return name + " - " + artistNames;
+    }
+
+    void setAddDesc(QString by)
+    {
+        this->addBy = by;
+        this->addTime = QDateTime::currentSecsSinceEpoch();
     }
 };
 
@@ -269,6 +285,7 @@ private:
 
     bool doubleClickToPlay = false; // 双击是立即播放，还是添加到列表
     bool searchAndAppend = false;
+    qint64 setPlayPositionAfterLoad = 0; // 加载后跳转到时间
 };
 
 class NoFocusDelegate : public QStyledItemDelegate
