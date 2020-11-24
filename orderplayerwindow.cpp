@@ -129,7 +129,11 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     else
         ui->circleModeButton->setIcon(QIcon(":/icons/single_circle"));
 
-    desktopLyric = new DesktopLyricWidget(this);
+    desktopLyric = new DesktopLyricWidget(nullptr);
+    connect(desktopLyric, &DesktopLyricWidget::signalhide, this, [=]{
+        ui->desktopLyricButton->setIcon(QIcon(":/icons/lyric_hide"));
+        settings.setValue("music/desktopLyric", false);
+    });
     bool showDesktopLyric = settings.value("music/desktopLyric", false).toBool();
     if (showDesktopLyric)
     {
@@ -165,6 +169,7 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
 OrderPlayerWindow::~OrderPlayerWindow()
 {
     delete ui;
+    desktopLyric->deleteLater();
 }
 
 void OrderPlayerWindow::on_searchEdit_returnPressed()
@@ -633,7 +638,7 @@ void OrderPlayerWindow::playLocalSong(Song song)
         QTextStream stream(&file);
         QString lyric;
         QString line;
-        while (stream.atEnd())
+        while (!stream.atEnd())
         {
             line = stream.readLine();
             lyric.append(line+"\n");
@@ -734,6 +739,11 @@ void OrderPlayerWindow::downloadSong(Song song)
         QString type = JVAL_STR(type); // mp3
         QString encodeType = JVAL_STR(encodeType); // mp3
         qDebug() << "    信息：" << br << size << type << url;
+        if (size == 0)
+        {
+            qDebug() << "无法下载，可能没有版权" << song.simpleString();
+            return ;
+        }
 
         // 开始下载歌曲本身
         QNetworkAccessManager manager;
@@ -896,7 +906,7 @@ void OrderPlayerWindow::downloadSongCover(Song song)
  */
 void OrderPlayerWindow::setCurrentLyric(QString lyric)
 {
-    QStringList lines = lyric.split("\n", QString::SkipEmptyParts);
+    desktopLyric->setLyric(lyric);
 }
 
 /**

@@ -7,10 +7,48 @@ DesktopLyricWidget::DesktopLyricWidget(QWidget *parent) : QWidget(parent),
     this->setWindowFlags(Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint | Qt::Tool);      //设置为无边框置顶窗口
     this->setMinimumSize(45, 25);                        //设置最小尺寸
     this->setAttribute(Qt::WA_TranslucentBackground, true); // 设置窗口透明
+    this->setContextMenuPolicy(Qt::CustomContextMenu);
+    this->setMouseTracking(true);
 
     QFontMetrics fm(this->font());
     fontHeight = fm.height();
     lineSpacing = fm.lineSpacing();
+
+    connect(this, SIGNAL(customContextMenuRequested(const QPoint&)), this, SLOT(showMenu()));
+
+    playingColor = qvariant_cast<QColor>(settings.value("music/playingColor", playingColor));
+    waitingColor = qvariant_cast<QColor>(settings.value("music/waitingColor", waitingColor));
+}
+
+/**
+ * 歌词文本设置成歌词流
+ * 在这里解析格式
+ */
+void DesktopLyricWidget::setLyric(QString text)
+{
+    QStringList sl = text.split("\n", QString::SkipEmptyParts);
+    foreach (QString line, sl)
+    {
+        QRegularExpression re("^\\[(\\d{2}):(\\d{2}).(\\d{2})\\](\\[(\\d{2}):(\\d{2}).(\\d{2})\\])?(.*)$");
+        QRegularExpressionMatch match;
+        if (line.indexOf(re, 0, &match) == -1)
+            continue;
+        QStringList caps = match.capturedTexts();
+        LyricBean lyric;
+        int minute = caps.at(1).toInt();
+        int second = caps.at(2).toInt();
+        int ms10 = caps.at(3).toInt();
+        lyric.start = minute * 60000 + second*1000 + ms10 * 10;
+        if (!caps.at(4).isEmpty()) // 有终止时间
+        {
+            int minute = caps.at(5).toInt();
+            int second = caps.at(6).toInt();
+            int ms10 = caps.at(7).toInt();
+            lyric.end = minute * 60000 + second*1000 + ms10 * 10;
+        }
+        lyric.text = caps.at(8);
+        lyricStream.append(lyric);
+    }
 }
 
 void DesktopLyricWidget::showEvent(QShowEvent *event)
@@ -72,6 +110,7 @@ void DesktopLyricWidget::mousePressEvent(QMouseEvent *e)
     {
         pressPos = e->pos();
     }
+    QWidget::mousePressEvent(e);
 }
 
 void DesktopLyricWidget::mouseMoveEvent(QMouseEvent *e)
@@ -80,6 +119,7 @@ void DesktopLyricWidget::mouseMoveEvent(QMouseEvent *e)
     {
         move(QCursor::pos() - pressPos);
     }
+    QWidget::mouseMoveEvent(e);
 }
 
 void DesktopLyricWidget::resizeEvent(QResizeEvent *)
@@ -89,19 +129,60 @@ void DesktopLyricWidget::resizeEvent(QResizeEvent *)
 
 void DesktopLyricWidget::paintEvent(QPaintEvent *)
 {
-    int penW = boundaryShowed;
     QPainter painter(this);
 
     // 绘制桌面歌词
 
     // 绘制背景
-    if (hovering)
+//    if (hovering)
     {
         painter.setRenderHint(QPainter::Antialiasing, true);
         QPainterPath path;
         path.addRoundedRect(rect(), 5, 5);
         painter.fillPath(path, QColor(64, 64, 64, 64));
     }
+}
+
+void DesktopLyricWidget::showMenu()
+{
+    FacileMenu* menu = new FacileMenu(this);
+    auto lineMenu = menu->addMenu("行数");
+    lineMenu->addOptions(QStringList{"自动", "单行", "双行"}, lineMode, [=](int index){
+        lineMode = static_cast<LineMode>(index);
+        settings.setValue("music/lineMode", lineMode);
+        update();
+    });
+    auto alignMenu = menu->addMenu("对齐");
+    alignMenu->addOptions(QStringList{"居中", "左右分离", "左对齐", "右对齐"}, alignMode, [=](int index){
+        alignMode = static_cast<AlignMode>(index);
+        settings.setValue("music/alignMode", alignMode);
+        update();
+    });
+    menu->addAction("已播放颜色", [=]{
+        QColor c = QColorDialog::getColor(playingColor, this, "选择背景颜色", QColorDialog::ShowAlphaChannel);
+        if (!c.isValid())
+            return ;
+        if (c != playingColor)
+        {
+            settings.setValue("music/playingColor", playingColor = c);
+            update();
+        }
+    })->fgColor(playingColor);
+    menu->addAction("未播放颜色", [=]{
+        QColor c = QColorDialog::getColor(waitingColor, this, "选择背景颜色", QColorDialog::ShowAlphaChannel);
+        if (!c.isValid())
+            return ;
+        if (c != waitingColor)
+        {
+            settings.setValue("music/waitingColor", waitingColor = c);
+            update();
+        }
+    })->fgColor(waitingColor);
+    menu->addAction("隐藏", [=]{
+        this->hide();
+        emit signalhide();
+    });
+    menu->exec(QCursor::pos());
 }
 
 void DesktopLyricWidget::setPosition(qint64 position)

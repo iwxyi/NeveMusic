@@ -30,12 +30,39 @@
 #include <QDir>
 #include <QPushButton>
 #include <QStringListModel>
+#include "facilemenu.h"
+
+struct LyricBean
+{
+    qint64 start = 0;
+    qint64 end = 0;
+    QString text;
+};
+
+typedef QList<LyricBean> LyricStream;
 
 class DesktopLyricWidget : public QWidget
 {
     Q_OBJECT
 public:
     explicit DesktopLyricWidget(QWidget *parent = nullptr);
+
+    enum LineMode
+    {
+        SuitableLine,
+        SingleLine,
+        DoubleLine
+    };
+
+    enum AlignMode
+    {
+        AlignMid,
+        AlignWidth,
+        AlignLeft,
+        AlignRight,
+    };
+
+    void setLyric(QString text);
 
 protected:
     void showEvent(QShowEvent *event) override;
@@ -49,13 +76,16 @@ protected:
     void paintEvent(QPaintEvent *) override;
 
 signals:
+    void signalhide();
 
 public slots:
+    void showMenu();
     void setPosition(qint64 position);
 
 private:
     QSettings settings;
 
+    // 几何数值
     int fontHeight;
     int lineSpacing;
     int boundaryWidth = 8;
@@ -63,8 +93,15 @@ private:
     QPoint pressPos;
     bool hovering = false;
 
-    QColor playingColor;
-    QColor waitingColor;
+    // 绘制设定
+    LineMode lineMode = DoubleLine; // 单行还是双行
+    AlignMode alignMode = AlignLeft; // 0左 1中 2右 3分散
+    QColor playingColor = QColor(231, 219, 255);
+    QColor waitingColor = QColor(255, 223, 224);
+
+    // 歌词显示
+    LyricStream lyricStream;
+    int currentRow = 0;
 };
 
 #endif // DESKTOPLYRICWIDGET_H
