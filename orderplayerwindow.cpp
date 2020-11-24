@@ -17,6 +17,11 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     header->setStyleSheet("QHeaderView { background-color: transparent; }");
     ui->searchResultTable->verticalHeader()->setStyleSheet("QHeaderView { background-color: transparent; }");
     ui->searchResultTable->setItemDelegate(new NoFocusDelegate());
+    ui->orderSongsListView->setItemDelegate(new NoFocusDelegate());
+    ui->normalSongsListView->setItemDelegate(new NoFocusDelegate());
+    ui->favoriteSongsListView->setItemDelegate(new NoFocusDelegate());
+    ui->listSongsListView->setItemDelegate(new NoFocusDelegate());
+    ui->historySongsListView->setItemDelegate(new NoFocusDelegate());
 
     QString vScrollBarSS("QScrollBar:vertical{"        //垂直滑块整体
                          "background: transparent;"  //背景色
@@ -59,6 +64,7 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     ui->normalSongsListView->horizontalScrollBar()->setStyleSheet(hScrollBarSS);
     ui->historySongsListView->verticalScrollBar()->setStyleSheet(vScrollBarSS);
     ui->historySongsListView->horizontalScrollBar()->setStyleSheet(hScrollBarSS);
+    ui->listTabWidget->removeTab(3); // TOOD: 歌单部分没做好，先隐藏
     connect(ui->searchResultTable->horizontalHeader(), SIGNAL(sectionClicked(int)), this, SLOT(sortSearchResult(int)));
 
     connect(player, &QMediaPlayer::positionChanged, this, [=](qint64 position){
@@ -117,6 +123,12 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     ui->volumeSlider->setSliderPosition(volume);
     player->setVolume(volume);
 
+    circleMode = static_cast<PlayCircleMode>(settings.value("music/mode", 0).toInt());
+    if (circleMode == OrderList)
+        ui->circleModeButton->setIcon(QIcon(":/icons/order_list"));
+    else
+        ui->circleModeButton->setIcon(QIcon(":/icons/single_circle"));
+
     Song currentSong = Song::fromJson(settings.value("music/currentSong").toJsonObject());
     if (currentSong.isValid())
     {
@@ -158,6 +170,7 @@ void OrderPlayerWindow::on_searchButton_clicked()
  */
 void OrderPlayerWindow::slotSearchAndAutoAppend(QString key)
 {
+    ui->searchEdit->setText(key);
     searchAndAppend = true;
     searchMusic(key);
 }
@@ -213,16 +226,21 @@ void OrderPlayerWindow::searchMusic(QString key)
 /**
  * 搜索结果数据到Table
  */
-void OrderPlayerWindow::setSearchResultTable(QList<Song> songs)
+void OrderPlayerWindow::setSearchResultTable(SongList songs)
 {
     QTableWidget* table = ui->searchResultTable;
+    table->clear();
+    searchResultPlayLists.clear();
+
     enum {
         titleCol,
         artistCol,
         albumCol,
-        durationCol,
-        markCol
+        durationCol
     };
+    QStringList headers{"标题", "艺术家", "专辑", "时长"};
+    table->setHorizontalHeaderLabels(headers);
+    table->setColumnCount(4);
 
     QFontMetrics fm(font());
     int fw = fm.horizontalAdvance("哈哈哈哈哈哈哈哈哈哈哈哈哈哈哈哈");
@@ -245,8 +263,15 @@ void OrderPlayerWindow::setSearchResultTable(QList<Song> songs)
         table->setItem(row, artistCol, createItem(song.artistNames));
         table->setItem(row, albumCol, createItem(song.album.name));
         table->setItem(row, durationCol, createItem(msecondToString(song.duration)));
-        table->setItem(row, markCol, createItem(snum(song.mark)));
     }
+}
+
+void OrderPlayerWindow::setSearchResultTable(PlayListList playLists)
+{
+    QTableWidget* table = ui->searchResultTable;
+    table->clear();
+    searchResultSongs.clear();
+
 }
 
 void OrderPlayerWindow::addFavorite(SongList songs)
@@ -373,8 +398,15 @@ void OrderPlayerWindow::closeEvent(QCloseEvent *)
  */
 void OrderPlayerWindow::on_searchResultTable_cellActivated(int row, int)
 {
-    Song song = searchResultSongs.at(row);
-    activeSong(song);
+    if (searchResultSongs.size())
+    {
+        Song song = searchResultSongs.at(row);
+        activeSong(song);
+    }
+    else if (searchResultPlayLists.size())
+    {
+
+    }
 }
 
 /**
@@ -383,55 +415,85 @@ void OrderPlayerWindow::on_searchResultTable_cellActivated(int row, int)
 void OrderPlayerWindow::on_searchResultTable_customContextMenuRequested(const QPoint &)
 {
     auto items = ui->searchResultTable->selectedItems();
-    QList<Song> songs;
-    foreach (auto item, items)
+
+    // 是歌曲搜索结果
+    if (searchResultSongs.size())
     {
-        int row = ui->searchResultTable->row(item);
-        int col = ui->searchResultTable->column(item);
-        if (col != 0)
-            continue;
-        songs.append(searchResultSongs.at(row));
+        QList<Song> songs;
+        foreach (auto item, items)
+        {
+            int row = ui->searchResultTable->row(item);
+            int col = ui->searchResultTable->column(item);
+            if (col != 0)
+                continue;
+            songs.append(searchResultSongs.at(row));
+        }
+        int row = ui->searchResultTable->currentRow();
+        Song currentSong;
+        if (row > -1)
+            currentSong = searchResultSongs.at(row);
+
+        FacileMenu* menu = new FacileMenu(this);
+        menu->addAction("立即播放", [=]{
+            startPlaySong(currentSong);
+        })->disable(songs.size() != 1);
+
+        menu->addAction("下一首播放", [=]{
+            appendNextSongs(songs);
+        })->disable(!currentSong.isValid());
+
+        menu->addAction("添加到播放列表", [=]{
+            appendOrderSongs(songs);
+        })->disable(!currentSong.isValid());
+
+        menu->addAction("添加常时播放", [=]{
+            foreach (Song song, songs)
+            {
+                normalSongs.removeOne(song);
+            }
+            for (int i = songs.size()-1; i >= 0; i--)
+            {
+                normalSongs.insert(0, songs.at(i));
+            }
+            saveSongList("music/normal", normalSongs);
+            setSongModelToView(normalSongs, ui->normalSongsListView);
+        })->disable(!currentSong.isValid());
+
+        menu->split()->addAction("收藏", [=]{
+            if (!favoriteSongs.contains(currentSong))
+                addFavorite(songs);
+            else
+                removeFavorite(songs);
+        })->disable(!currentSong.isValid())
+                ->text(favoriteSongs.contains(currentSong), "从收藏中移除", "添加到收藏");
+
+        menu->exec();
     }
-    int row = ui->searchResultTable->currentRow();
-    Song currentSong;
-    if (row > -1)
-        currentSong = searchResultSongs.at(row);
-
-    FacileMenu* menu = new FacileMenu(this);
-    menu->addAction("立即播放", [=]{
-        startPlaySong(currentSong);
-    })->disable(songs.size() != 1);
-
-    menu->addAction("下一首播放", [=]{
-        appendNextSongs(songs);
-    })->disable(!currentSong.isValid());
-
-    menu->addAction("添加到播放列表", [=]{
-        appendOrderSongs(songs);
-    })->disable(!currentSong.isValid());
-
-    menu->addAction("添加常时播放", [=]{
-        foreach (Song song, songs)
+    // 是歌单搜索结果
+    else if (searchResultPlayLists.size())
+    {
+        PlayListList lists;
+        foreach (auto item, items)
         {
-            normalSongs.removeOne(song);
+            int row = ui->searchResultTable->row(item);
+            int col = ui->searchResultTable->column(item);
+            if (col != 0)
+                continue;
+            lists.append(searchResultPlayLists.at(row));
         }
-        for (int i = songs.size()-1; i >= 0; i--)
-        {
-            normalSongs.insert(0, songs.at(i));
-        }
-        saveSongList("music/normal", normalSongs);
-        setSongModelToView(normalSongs, ui->normalSongsListView);
-    })->disable(!currentSong.isValid());
+        int row = ui->searchResultTable->currentRow();
+        PlayList currentList;
+        if (row > -1)
+            currentList = searchResultPlayLists.at(row);
 
-    menu->split()->addAction("收藏", [=]{
-        if (!favoriteSongs.contains(currentSong))
-            addFavorite(songs);
-        else
-            removeFavorite(songs);
-    })->disable(!currentSong.isValid())
-            ->text(favoriteSongs.contains(currentSong), "从收藏中移除", "添加到收藏");
+        FacileMenu* menu = new FacileMenu(this);
 
-    menu->exec();
+        menu->addAction("添加到我的歌单", [=]{
+
+        });
+
+        menu->exec();
+    }
 }
 
 /**
@@ -907,7 +969,17 @@ void OrderPlayerWindow::on_volumeButton_clicked()
  */
 void OrderPlayerWindow::on_circleModeButton_clicked()
 {
-
+    if (circleMode == OrderList)
+    {
+        circleMode = SingleCircle;
+        ui->circleModeButton->setIcon(QIcon(":/icons/single_circle"));
+    }
+    else
+    {
+        circleMode = OrderList;
+        ui->circleModeButton->setIcon(QIcon(":/icons/order_list"));
+    }
+    settings.setValue("music/mode", circleMode);
 }
 
 void OrderPlayerWindow::slotSongPlayEnd()
@@ -930,6 +1002,7 @@ void OrderPlayerWindow::slotSongPlayEnd()
     {
         // 不用管，会自己放下去
         player->setPosition(0);
+        player->play();
     }
 }
 
@@ -1063,6 +1136,31 @@ void OrderPlayerWindow::on_favoriteSongsListView_customContextMenuRequested(cons
         saveSongList("music/favorite", favoriteSongs);
         setSongModelToView(favoriteSongs, ui->favoriteSongsListView);
     })->disable(!songs.size());
+
+    menu->exec();
+}
+
+void OrderPlayerWindow::on_listSongsListView_customContextMenuRequested(const QPoint &pos)
+{
+    auto indexes = ui->favoriteSongsListView->selectionModel()->selectedRows(0);
+    int row = ui->listSongsListView->currentIndex().row();
+    PlayList pl;
+    if (row > -1)
+        ;
+
+    FacileMenu* menu = new FacileMenu(this);
+
+    menu->addAction("加载歌单", [=]{
+
+    });
+
+    menu->addAction("播放里面歌曲", [=]{
+
+    });
+
+    menu->split()->addAction("删除歌单", [=]{
+
+    });
 
     menu->exec();
 }

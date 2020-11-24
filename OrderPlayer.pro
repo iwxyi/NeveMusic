@@ -30,7 +30,8 @@ HEADERS += \
     facile_menu/facilemenu.h \
     facile_menu/facilemenuitem.h \
     interactive_buttons/interactivebuttonbase.h \
-    orderplayerwindow.h
+    orderplayerwindow.h \
+    songbeans.h
 
 FORMS += \
     orderplayerwindow.ui
