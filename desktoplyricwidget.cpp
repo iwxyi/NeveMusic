@@ -30,6 +30,7 @@ DesktopLyricWidget::DesktopLyricWidget(QWidget *parent) : QWidget(parent),
 void DesktopLyricWidget::setLyric(QString text)
 {
     QStringList sl = text.split("\n", QString::SkipEmptyParts);
+    LyricBean prevLyric(false);
     foreach (QString line, sl)
     {
         QRegularExpression re("^\\[(\\d{2}):(\\d{2}).(\\d{2})\\](\\[(\\d{2}):(\\d{2}).(\\d{2})\\])?(.*)$");
@@ -183,7 +184,7 @@ void DesktopLyricWidget::paintEvent(QPaintEvent *)
     }
 
     // 绘制背景
-//    if (hovering)
+    if (hovering)
     {
         painter.setRenderHint(QPainter::Antialiasing, true);
         QPainterPath path;
@@ -228,7 +229,7 @@ void DesktopLyricWidget::showMenu()
         }
     })->fgColor(waitingColor);
     auto fontMenu = menu->addMenu("字体大小");
-    fontMenu->addNumberedActions("%1", 10, 50, [=](FacileMenuItem*){}, [=](int index){
+    fontMenu->addNumberedActions("%1", 5, 30, [=](FacileMenuItem*){}, [=](int index){
         pointSize = index + 10;
         settings.setValue("music/desktopLyricPointSize", pointSize);
         update();
@@ -242,5 +243,25 @@ void DesktopLyricWidget::showMenu()
 
 void DesktopLyricWidget::setPosition(qint64 position)
 {
+    if (!lyricStream.size())
+        return ;
+    if (currentRow < 0 || currentRow >= lyricStream.size())
+        currentRow = 0;
 
+    LyricBean lyric = lyricStream.at(currentRow);
+    if (currentRow == lyricStream.size()-1 && lyric.start <= position) // 已经到末尾了
+        return ;
+
+    LyricBean nextLyric = currentRow == lyricStream.size()-1 ? LyricBean(false) : lyricStream.at(currentRow + 1);
+    if (lyric.start <= position && nextLyric.start > position) // 不需要改变
+        return ;
+
+    if (lyric.start > position) // 什么情况？从头强制重新开始！
+        currentRow = 0;
+
+    while (currentRow+1 < lyricStream.size() && lyricStream.at(currentRow+1).start < position)
+    {
+        currentRow++;
+    }
+    update();
 }

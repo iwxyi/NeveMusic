@@ -37,6 +37,9 @@ struct LyricBean
     qint64 start = 0;
     qint64 end = 0;
     QString text;
+
+    LyricBean(){}
+    LyricBean(bool):start(-1),end(-1){}
 };
 
 typedef QList<LyricBean> LyricStream;
