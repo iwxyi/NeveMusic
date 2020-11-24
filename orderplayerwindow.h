@@ -25,12 +25,11 @@
 #include <QMediaPlayer>
 #include "facilemenu.h"
 #include "songbeans.h"
+#include "desktoplyricwidget.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class OrderPlayerWindow; }
 QT_END_NAMESPACE
-
-
 
 class OrderPlayerWindow : public QMainWindow
 {
@@ -90,6 +89,8 @@ private slots:
 
     void on_historySongsListView_activated(const QModelIndex &index);
 
+    void on_desktopLyricButton_clicked();
+
 private:
     void searchMusic(QString key);
     void setSearchResultTable(SongList songs);
@@ -128,6 +129,7 @@ signals:
     void signalSongDownloadFinished(Song song);
     void signalLyricDownloadFinished(Song song);
     void signalCoverDownloadFinished(Song song);
+    void signalSongPlayStarted(Song song);
     void signalSongPlayFinished(Song song);
 
 private:
@@ -154,6 +156,8 @@ private:
     bool doubleClickToPlay = false; // 双击是立即播放，还是添加到列表
     bool searchAndAppend = false;
     qint64 setPlayPositionAfterLoad = 0; // 加载后跳转到时间
+
+    DesktopLyricWidget* desktopLyric;
 };
 
 class NoFocusDelegate : public QStyledItemDelegate

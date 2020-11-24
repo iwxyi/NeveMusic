@@ -4,7 +4,7 @@
 OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     : QMainWindow(parent),
       ui(new Ui::OrderPlayerWindow),
-      settings("settings.ini", QSettings::Format::IniFormat),
+      settings("musics.ini", QSettings::Format::IniFormat),
       musicsFileDir("musics"),
       player(new QMediaPlayer(this))
 {
@@ -128,6 +128,19 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
         ui->circleModeButton->setIcon(QIcon(":/icons/order_list"));
     else
         ui->circleModeButton->setIcon(QIcon(":/icons/single_circle"));
+
+    desktopLyric = new DesktopLyricWidget(this);
+    bool showDesktopLyric = settings.value("music/desktopLyric", false).toBool();
+    if (showDesktopLyric)
+    {
+        desktopLyric->show();
+        ui->desktopLyricButton->setIcon(QIcon(":/icons/lyric_show"));
+    }
+    else
+    {
+        desktopLyric->hide();
+        ui->desktopLyricButton->setIcon(QIcon(":/icons/lyric_hide"));
+    }
 
     Song currentSong = Song::fromJson(settings.value("music/currentSong").toJsonObject());
     if (currentSong.isValid())
@@ -551,6 +564,7 @@ void OrderPlayerWindow::appendOrderSongs(SongList songs)
     {
         qDebug() << "当前未播放，开始播放列表";
         startPlaySong(orderSongs.takeFirst());
+        setSongModelToView(orderSongs, ui->orderSongsListView);
     }
 
     downloadNext();
@@ -638,6 +652,7 @@ void OrderPlayerWindow::playLocalSong(Song song)
     player->setMedia(QUrl::fromLocalFile(songPath(song)));
     player->setPosition(0);
     player->play();
+    emit signalSongPlayStarted(song);
 
     // 添加到历史记录
     historySongs.removeOne(song);
@@ -1285,6 +1300,7 @@ void OrderPlayerWindow::on_historySongsListView_customContextMenuRequested(const
 void OrderPlayerWindow::on_orderSongsListView_activated(const QModelIndex &index)
 {
     Song song = orderSongs.takeAt(index.row());
+    setSongModelToView(orderSongs, ui->orderSongsListView);
     startPlaySong(song);
 }
 
@@ -1304,4 +1320,20 @@ void OrderPlayerWindow::on_historySongsListView_activated(const QModelIndex &ind
 {
     Song song = historySongs.at(index.row());
     activeSong(song);
+}
+
+void OrderPlayerWindow::on_desktopLyricButton_clicked()
+{
+    bool showDesktopLyric = !settings.value("music/desktopLyric", false).toBool();
+    settings.setValue("music/desktopLyric", showDesktopLyric);
+    if (showDesktopLyric)
+    {
+        desktopLyric->show();
+        ui->desktopLyricButton->setIcon(QIcon(":/icons/lyric_show"));
+    }
+    else
+    {
+        desktopLyric->hide();
+        ui->desktopLyricButton->setIcon(QIcon(":/icons/lyric_hide"));
+    }
 }

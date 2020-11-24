@@ -20,6 +20,7 @@ INCLUDEPATH += interactive_buttons/ \
     facile_menu/
 
 SOURCES += \
+    desktoplyricwidget.cpp \
     facile_menu/facilemenu.cpp \
     facile_menu/facilemenuitem.cpp \
     interactive_buttons/interactivebuttonbase.cpp \
@@ -27,6 +28,7 @@ SOURCES += \
     orderplayerwindow.cpp
 
 HEADERS += \
+    desktoplyricwidget.h \
     facile_menu/facilemenu.h \
     facile_menu/facilemenuitem.h \
     interactive_buttons/interactivebuttonbase.h \
