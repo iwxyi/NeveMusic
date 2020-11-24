@@ -16,8 +16,11 @@ DesktopLyricWidget::DesktopLyricWidget(QWidget *parent) : QWidget(parent),
 
     connect(this, SIGNAL(customContextMenuRequested(const QPoint&)), this, SLOT(showMenu()));
 
+    lineMode = static_cast<LineMode>(settings.value("music/lineMode", lineMode).toInt());
+    alignMode = static_cast<AlignMode>(settings.value("music/alignMode", alignMode).toInt());
     playingColor = qvariant_cast<QColor>(settings.value("music/playingColor", playingColor));
     waitingColor = qvariant_cast<QColor>(settings.value("music/waitingColor", waitingColor));
+    pointSize = settings.value("music/desktopLyricPointSize", pointSize).toInt();
 }
 
 /**
@@ -49,6 +52,9 @@ void DesktopLyricWidget::setLyric(QString text)
         lyric.text = caps.at(8);
         lyricStream.append(lyric);
     }
+
+    currentRow = 0;
+    update();
 }
 
 void DesktopLyricWidget::showEvent(QShowEvent *event)
@@ -130,15 +136,58 @@ void DesktopLyricWidget::resizeEvent(QResizeEvent *)
 void DesktopLyricWidget::paintEvent(QPaintEvent *)
 {
     QPainter painter(this);
+    QFont font;
+    font.setPointSize(pointSize);
+    font.setBold(true);
+    painter.setFont(font);
 
     // 绘制桌面歌词
+    // 文字区域
+    QRect rect = this->rect();
+    rect.setLeft(rect.left() + boundaryWidth);
+    rect.setTop(rect.top() + boundaryWidth);
+    rect.setRight(rect.right() - boundaryWidth);
+    rect.setBottom(rect.bottom() - boundaryWidth);
+
+    if (currentRow > -1 && currentRow < lyricStream.size())
+    {
+        // 绘制当前句
+        painter.setPen(playingColor);
+        QFlags<Qt::AlignmentFlag> align;
+        if (lineMode == SuitableLine || lineMode == DoubleLine)
+            align = Qt::AlignTop;
+        else if (lineMode == SingleLine)
+            align = Qt::AlignVCenter;
+        if (alignMode == AlignMid)
+            align |= Qt::AlignHCenter;
+        else if (alignMode == AlignRight)
+            align |= Qt::AlignRight;
+        else
+            align |= Qt::AlignLeft;
+        painter.drawText(rect, align, lyricStream.at(currentRow).text);
+
+        // 绘制下一句
+        if (currentRow < lyricStream.size()-1 && (lineMode == SuitableLine || lineMode == DoubleLine))
+        {
+            painter.setPen(waitingColor);
+            align = Qt::AlignBottom;
+            if (alignMode == AlignMid)
+                align |= Qt::AlignHCenter;
+            else if (alignMode == AlignLeft)
+                align |= Qt::AlignLeft;
+            else
+                align |= Qt::AlignRight;
+
+            painter.drawText(rect, align, lyricStream.at(currentRow+1).text);
+        }
+    }
 
     // 绘制背景
 //    if (hovering)
     {
         painter.setRenderHint(QPainter::Antialiasing, true);
         QPainterPath path;
-        path.addRoundedRect(rect(), 5, 5);
+        path.addRoundedRect(this->rect(), 5, 5);
         painter.fillPath(path, QColor(64, 64, 64, 64));
     }
 }
@@ -178,7 +227,13 @@ void DesktopLyricWidget::showMenu()
             update();
         }
     })->fgColor(waitingColor);
-    menu->addAction("隐藏", [=]{
+    auto fontMenu = menu->addMenu("字体大小");
+    fontMenu->addNumberedActions("%1", 10, 50, [=](FacileMenuItem*){}, [=](int index){
+        pointSize = index + 10;
+        settings.setValue("music/desktopLyricPointSize", pointSize);
+        update();
+    });
+    menu->split()->addAction("隐藏", [=]{
         this->hide();
         emit signalhide();
     });

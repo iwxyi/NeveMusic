@@ -101,7 +101,8 @@ private:
 
     // 歌词显示
     LyricStream lyricStream;
-    int currentRow = 0;
+    int currentRow = -1; // 当前播放或即将播放的歌词row（不一定有下一行）
+    int pointSize = 30;
 };
 
 #endif // DESKTOPLYRICWIDGET_H

@@ -6,7 +6,8 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
       ui(new Ui::OrderPlayerWindow),
       settings("musics.ini", QSettings::Format::IniFormat),
       musicsFileDir("musics"),
-      player(new QMediaPlayer(this))
+      player(new QMediaPlayer(this)),
+      desktopLyric(new DesktopLyricWidget(nullptr))
 {
     ui->setupUi(this);
 
@@ -70,6 +71,7 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     connect(player, &QMediaPlayer::positionChanged, this, [=](qint64 position){
         ui->playProgressSlider->setSliderPosition(static_cast<int>(position));
         ui->playingCurrentTimeLabel->setText(msecondToString(position));
+        desktopLyric->setPosition(position);
     });
     connect(player, &QMediaPlayer::durationChanged, this, [=](qint64 duration){
         ui->playProgressSlider->setMaximum(static_cast<int>(duration));
@@ -129,7 +131,6 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     else
         ui->circleModeButton->setIcon(QIcon(":/icons/single_circle"));
 
-    desktopLyric = new DesktopLyricWidget(nullptr);
     connect(desktopLyric, &DesktopLyricWidget::signalhide, this, [=]{
         ui->desktopLyricButton->setIcon(QIcon(":/icons/lyric_hide"));
         settings.setValue("music/desktopLyric", false);
