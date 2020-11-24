@@ -86,6 +86,11 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
         {
             slotSongPlayEnd();
         }
+        else if (status == QMediaPlayer::InvalidMedia)
+        {
+            qDebug() << "无效媒体：" << playingSong.simpleString();
+            playNext();
+        }
     });
     connect(player, &QMediaPlayer::stateChanged, this, [=](QMediaPlayer::State state){
         if (state == QMediaPlayer::PlayingState)
@@ -743,6 +748,17 @@ void OrderPlayerWindow::downloadSong(Song song)
         if (size == 0)
         {
             qDebug() << "无法下载，可能没有版权" << song.simpleString();
+            if (playAfterDownloaded == song)
+            {
+                if (orderSongs.contains(song))
+                {
+                    orderSongs.removeOne(song);
+                }
+                playNext();
+            }
+
+            downloadingSong = Song();
+            downloadNext();
             return ;
         }
 

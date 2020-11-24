@@ -104,11 +104,13 @@ bool DesktopLyricWidget::nativeEvent(const QByteArray &eventType, void *message,
 void DesktopLyricWidget::enterEvent(QEvent *event)
 {
     hovering = true;
+    update();
 }
 
 void DesktopLyricWidget::leaveEvent(QEvent *event)
 {
     hovering = false;
+    update();
 }
 
 void DesktopLyricWidget::mousePressEvent(QMouseEvent *e)
@@ -122,6 +124,7 @@ void DesktopLyricWidget::mousePressEvent(QMouseEvent *e)
 
 void DesktopLyricWidget::mouseMoveEvent(QMouseEvent *e)
 {
+    hovering = true;
     if(e->buttons()&Qt::LeftButton)
     {
         move(QCursor::pos() - pressPos);
@@ -152,26 +155,31 @@ void DesktopLyricWidget::paintEvent(QPaintEvent *)
 
     if (currentRow > -1 && currentRow < lyricStream.size())
     {
+        bool cross = lineMode != SingleLine && currentRow % 2;
+
         // 绘制当前句
-        painter.setPen(playingColor);
-        QFlags<Qt::AlignmentFlag> align;
-        if (lineMode == SuitableLine || lineMode == DoubleLine)
-            align = Qt::AlignTop;
-        else if (lineMode == SingleLine)
-            align = Qt::AlignVCenter;
-        if (alignMode == AlignMid)
-            align |= Qt::AlignHCenter;
-        else if (alignMode == AlignRight)
-            align |= Qt::AlignRight;
-        else
-            align |= Qt::AlignLeft;
-        painter.drawText(rect, align, lyricStream.at(currentRow).text);
+        if (currentRow + (cross ? 1 : 0) < lyricStream.size())
+        {
+            painter.setPen(cross ? waitingColor : playingColor);
+            QFlags<Qt::AlignmentFlag> align;
+            if (lineMode == SuitableLine || lineMode == DoubleLine)
+                align = Qt::AlignTop;
+            else if (lineMode == SingleLine)
+                align = Qt::AlignVCenter;
+            if (alignMode == AlignMid)
+                align |= Qt::AlignHCenter;
+            else if (alignMode == AlignRight)
+                align |= Qt::AlignRight;
+            else
+                align |= Qt::AlignLeft;
+            painter.drawText(rect, align, lyricStream.at(currentRow + (cross ? 1 : 0)).text);
+        }
 
         // 绘制下一句
-        if (currentRow < lyricStream.size()-1 && (lineMode == SuitableLine || lineMode == DoubleLine))
+        if (currentRow - (cross ? 1 : 0) < lyricStream.size()-1 && (lineMode == SuitableLine || lineMode == DoubleLine))
         {
-            painter.setPen(waitingColor);
-            align = Qt::AlignBottom;
+            painter.setPen(cross ? playingColor : waitingColor);
+            QFlags<Qt::AlignmentFlag> align = Qt::AlignBottom;
             if (alignMode == AlignMid)
                 align |= Qt::AlignHCenter;
             else if (alignMode == AlignLeft)
@@ -179,7 +187,7 @@ void DesktopLyricWidget::paintEvent(QPaintEvent *)
             else
                 align |= Qt::AlignRight;
 
-            painter.drawText(rect, align, lyricStream.at(currentRow+1).text);
+            painter.drawText(rect, align, lyricStream.at(currentRow + (cross ? 0 : 1)).text);
         }
     }
 
@@ -189,7 +197,7 @@ void DesktopLyricWidget::paintEvent(QPaintEvent *)
         painter.setRenderHint(QPainter::Antialiasing, true);
         QPainterPath path;
         path.addRoundedRect(this->rect(), 5, 5);
-        painter.fillPath(path, QColor(64, 64, 64, 64));
+        painter.fillPath(path, QColor(64, 64, 64, 32));
     }
 }
 
@@ -229,11 +237,19 @@ void DesktopLyricWidget::showMenu()
         }
     })->fgColor(waitingColor);
     auto fontMenu = menu->addMenu("字体大小");
-    fontMenu->addNumberedActions("%1", 5, 30, [=](FacileMenuItem*){}, [=](int index){
-        pointSize = index + 10;
+    QStringList sl;
+    for (int i = 12; i < 30; i++)
+        sl << QString::number(i);
+    fontMenu->addOptions(sl, pointSize-12, [=](int index){
+        pointSize = index + 12;
         settings.setValue("music/desktopLyricPointSize", pointSize);
         update();
     });
+    /*fontMenu->addNumberedActions("%1", 5, 30, [=](FacileMenuItem*){}, [=](int index){
+        pointSize = index + 10;
+        settings.setValue("music/desktopLyricPointSize", pointSize);
+        update();
+    });*/
     menu->split()->addAction("隐藏", [=]{
         this->hide();
         emit signalhide();
