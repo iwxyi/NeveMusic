@@ -26,14 +26,28 @@
 #include "facilemenu.h"
 #include "songbeans.h"
 #include "desktoplyricwidget.h"
+#include "numberanimation.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class OrderPlayerWindow; }
 QT_END_NAMESPACE
 
+QT_BEGIN_NAMESPACE
+    extern Q_WIDGETS_EXPORT void qt_blurImage( QPainter *p, QImage &blurImage, qreal radius, bool quality, bool alphaOnly, int transposed = 0 );
+QT_END_NAMESPACE
+
+#define LISTTAB_ORDER 0
+#define LISTTAB_NORMAL 1
+#define LISTTAB_FAVORITE 2
+#define LISTTAB_PLAYLIST 3
+#define LISTTAB_HISTORY 3
+
 class OrderPlayerWindow : public QMainWindow
 {
     Q_OBJECT
+    Q_PROPERTY(int lyricScroll READ getLyricScroll WRITE setLyricScroll)
+    Q_PROPERTY(int disappearBgProg READ getDisappearBgProg WRITE setDisappearBgProg)
+    Q_PROPERTY(int appearBgProg READ getAppearBgProg WRITE setAppearBgProg)
 public:
     OrderPlayerWindow(QWidget *parent = nullptr);
     ~OrderPlayerWindow() override;
@@ -44,12 +58,15 @@ public:
         SingleCircle
     };
 
+    bool hasSongInOrder(QString by);
+
+public slots:
+    void slotSearchAndAutoAppend(QString key, QString by = "");
+
 private slots:
     void on_searchEdit_returnPressed();
 
     void on_searchButton_clicked();
-
-    void slotSearchAndAutoAppend(QString key);
 
     void on_searchResultTable_cellActivated(int row, int);
 
@@ -60,6 +77,8 @@ private slots:
     void sortSearchResult(int col);
 
     void on_playProgressSlider_sliderReleased();
+
+    void on_playProgressSlider_sliderMoved(int position);
 
     void on_volumeSlider_sliderMoved(int position);
 
@@ -91,12 +110,25 @@ private slots:
 
     void on_desktopLyricButton_clicked();
 
+    void slotExpandPlayingButtonClicked();
+
+    void slotPlayerPositionChanged();
+
+    void on_splitter_splitterMoved(int pos, int index);
+
+    void on_titleButton_clicked();
+
+    void adjustCurrentLyricTime(QString lyric);
+
 private:
     void searchMusic(QString key);
     void setSearchResultTable(SongList songs);
     void setSearchResultTable(PlayListList playLists);
     void addFavorite(SongList songs);
     void removeFavorite(SongList songs);
+    void addNormal(SongList songs);
+    void removeNormal(SongList songs);
+    void removeOrder(SongList songs);
     void saveSongList(QString key, const SongList &songs);
     void restoreSongList(QString key, SongList& songs);
     void setSongModelToView(const SongList& songs, QListView* listView);
@@ -121,9 +153,25 @@ private:
     void downloadSongCover(Song song);
     void setCurrentLyric(QString lyric);
 
+    void adjustExpandPlayingButton();
+    void connectDesktopLyricSignals();
+    void setCurrentCover(const QPixmap& pixmap);
+    void setBlurBackground(const QPixmap& bg);
+
 protected:
     void showEvent(QShowEvent*) override;
     void closeEvent(QCloseEvent*) override;
+    void resizeEvent(QResizeEvent*) override;
+    void paintEvent(QPaintEvent* e) override;
+
+private:
+    void setLyricScroll(int x);
+    int getLyricScroll() const;
+    void setAppearBgProg(int x);
+    int getAppearBgProg() const;
+    void setDisappearBgProg(int x);
+    int getDisappearBgProg() const;
+    void showTabAnimation(QPoint center, QString text);
 
 signals:
     void signalSongDownloadFinished(Song song);
@@ -131,6 +179,8 @@ signals:
     void signalCoverDownloadFinished(Song song);
     void signalSongPlayStarted(Song song);
     void signalSongPlayFinished(Song song);
+    void signalOrderSongSucceed(Song song, qint64 msecond);
+    void signalOrderSongPlayed(Song song);
 
 private:
     Ui::OrderPlayerWindow *ui;
@@ -139,6 +189,8 @@ private:
     const QString API_DOMAIN = "http://iwxyi.com:3000/";
     SongList searchResultSongs;
     PlayListList searchResultPlayLists;
+
+    QStringList orderBys;
 
     SongList orderSongs;
     SongList favoriteSongs;
@@ -152,12 +204,20 @@ private:
     QMediaPlayer* player;
     PlayCircleMode circleMode = OrderList;
     Song playingSong;
+    QTimer* playingPositionTimer;
+    int lyricScroll;
 
     bool doubleClickToPlay = false; // 双击是立即播放，还是添加到列表
-    bool searchAndAppend = false;
     qint64 setPlayPositionAfterLoad = 0; // 加载后跳转到时间
 
     DesktopLyricWidget* desktopLyric;
+    InteractiveButtonBase* expandPlayingButton;
+
+    QPixmap currentCover;
+    int currentBgAlpha = 255;
+    QPixmap currentBlurBg;
+    QPixmap prevBlurBg;
+    int prevBgAlpha = 0;
 };
 
 class NoFocusDelegate : public QStyledItemDelegate
