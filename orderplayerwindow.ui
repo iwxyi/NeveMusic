@@ -18,10 +18,7 @@
     <normaloff>:/icons/candy</normaloff>:/icons/candy</iconset>
   </property>
   <property name="styleSheet">
-   <string notr="true">QMainWindow
-{
-	background: #F5F5F7;
-}</string>
+   <string notr="true"/>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,1,0">
@@ -111,7 +108,52 @@
        </widget>
       </item>
       <item>
-       <widget class="QWidget" name="searchRightSpacingWidget" native="true"/>
+       <widget class="QWidget" name="searchRightSpacingWidget" native="true">
+        <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <property name="spacing">
+          <number>0</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <spacer name="horizontalSpacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="settingsButton">
+           <property name="text">
+            <string/>
+           </property>
+           <property name="icon">
+            <iconset resource="../resource.qrc">
+             <normaloff>:/icons/settings</normaloff>:/icons/settings</iconset>
+           </property>
+           <property name="flat">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
       </item>
      </layout>
     </item>
@@ -132,7 +174,7 @@
       <property name="orientation">
        <enum>Qt::Horizontal</enum>
       </property>
-      <widget class="QWidget" name="">
+      <widget class="QWidget" name="layoutWidget">
        <layout class="QVBoxLayout" name="verticalLayout">
         <property name="leftMargin">
          <number>0</number>
@@ -142,6 +184,9 @@
         </property>
         <item>
          <widget class="QTabWidget" name="listTabWidget">
+          <property name="enabled">
+           <bool>true</bool>
+          </property>
           <property name="styleSheet">
            <string notr="true">QTabWidget
 {
@@ -174,10 +219,20 @@ QTabBar::tab:hover
 QTabBar::tab:selected
 {
 	background: rgba(255,255,255,128);
+}
+
+QTabBar::tab:disabled
+{
+	width: 0;
+	color: transparent;
+	tab-image: none;
 }</string>
           </property>
+          <property name="tabShape">
+           <enum>QTabWidget::Rounded</enum>
+          </property>
           <property name="currentIndex">
-           <number>3</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="tab">
            <property name="styleSheet">
@@ -187,8 +242,15 @@ QTabBar::tab:selected
 	border: none;
 }</string>
            </property>
+           <attribute name="icon">
+            <iconset resource="../resource.qrc">
+             <normaloff>:/icons/order</normaloff>:/icons/order</iconset>
+           </attribute>
            <attribute name="title">
-            <string>点歌</string>
+            <string/>
+           </attribute>
+           <attribute name="toolTip">
+            <string>点歌：根据弹幕自动搜索添加</string>
            </attribute>
            <layout class="QVBoxLayout" name="verticalLayout_4">
             <property name="leftMargin">
@@ -236,8 +298,15 @@ QTabBar::tab:selected
 	border: none;
 }</string>
            </property>
+           <attribute name="icon">
+            <iconset resource="../resource.qrc">
+             <normaloff>:/icons/random</normaloff>:/icons/random</iconset>
+           </attribute>
            <attribute name="title">
-            <string>常时</string>
+            <string/>
+           </attribute>
+           <attribute name="toolTip">
+            <string>常时：没有点歌时随机播放里面的</string>
            </attribute>
            <layout class="QVBoxLayout" name="verticalLayout_9">
             <property name="leftMargin">
@@ -285,7 +354,14 @@ QTabBar::tab:selected
 	border: none;
 }</string>
            </property>
+           <attribute name="icon">
+            <iconset resource="../resource.qrc">
+             <normaloff>:/icons/favorite</normaloff>:/icons/favorite</iconset>
+           </attribute>
            <attribute name="title">
+            <string/>
+           </attribute>
+           <attribute name="toolTip">
             <string>收藏</string>
            </attribute>
            <layout class="QVBoxLayout" name="verticalLayout_5">
@@ -331,6 +407,9 @@ QTabBar::tab:selected
            </layout>
           </widget>
           <widget class="QWidget" name="tab_5">
+           <property name="enabled">
+            <bool>true</bool>
+           </property>
            <property name="styleSheet">
             <string notr="true">QWidget
 {
@@ -338,7 +417,14 @@ QTabBar::tab:selected
 	border: none;
 }</string>
            </property>
+           <attribute name="icon">
+            <iconset resource="../resource.qrc">
+             <normaloff>:/icons/playlist</normaloff>:/icons/playlist</iconset>
+           </attribute>
            <attribute name="title">
+            <string/>
+           </attribute>
+           <attribute name="toolTip">
             <string>歌单</string>
            </attribute>
            <layout class="QVBoxLayout" name="verticalLayout_10">
@@ -356,6 +442,9 @@ QTabBar::tab:selected
             </property>
             <item>
              <widget class="QListView" name="listSongsListView">
+              <property name="enabled">
+               <bool>true</bool>
+              </property>
               <property name="contextMenuPolicy">
                <enum>Qt::CustomContextMenu</enum>
               </property>
@@ -387,7 +476,14 @@ QTabBar::tab:selected
 	border: none;
 }</string>
            </property>
+           <attribute name="icon">
+            <iconset resource="../resource.qrc">
+             <normaloff>:/icons/history</normaloff>:/icons/history</iconset>
+           </attribute>
            <attribute name="title">
+            <string/>
+           </attribute>
+           <attribute name="toolTip">
             <string>历史</string>
            </attribute>
            <layout class="QVBoxLayout" name="verticalLayout_6">
@@ -447,6 +543,9 @@ QTabBar::tab:selected
           </item>
           <item>
            <layout class="QVBoxLayout" name="verticalLayout_2">
+            <property name="spacing">
+             <number>0</number>
+            </property>
             <item>
              <widget class="QLabel" name="playingNameLabel">
               <property name="text">
@@ -484,7 +583,7 @@ QTabBar::tab:selected
 }</string>
        </property>
        <property name="currentIndex">
-        <number>1</number>
+        <number>0</number>
        </property>
        <widget class="QWidget" name="searchResultPage">
         <layout class="QVBoxLayout" name="verticalLayout_7">
@@ -550,31 +649,6 @@ QTableCornerButton::section
            <attribute name="verticalHeaderVisible">
             <bool>false</bool>
            </attribute>
-           <column>
-            <property name="text">
-             <string>标题</string>
-            </property>
-           </column>
-           <column>
-            <property name="text">
-             <string>歌手</string>
-            </property>
-           </column>
-           <column>
-            <property name="text">
-             <string>专辑</string>
-            </property>
-           </column>
-           <column>
-            <property name="text">
-             <string>时长</string>
-            </property>
-           </column>
-           <column>
-            <property name="text">
-             <string>热度</string>
-            </property>
-           </column>
           </widget>
          </item>
         </layout>
@@ -619,8 +693,8 @@ QTableCornerButton::section
              <rect>
               <x>0</x>
               <y>0</y>
-              <width>706</width>
-              <height>533</height>
+              <width>95</width>
+              <height>30</height>
              </rect>
             </property>
             <property name="styleSheet">

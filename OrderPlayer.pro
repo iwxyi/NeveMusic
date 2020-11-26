@@ -17,9 +17,12 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 INCLUDEPATH += interactive_buttons/ \
-    facile_menu/
+    facile_menu/ \
+    color_octree/
 
 SOURCES += \
+    color_octree/coloroctree.cpp \
+    color_octree/imageutil.cpp \
     desktoplyricwidget.cpp \
     facile_menu/facilemenu.cpp \
     facile_menu/facilemenuitem.cpp \
@@ -29,6 +32,8 @@ SOURCES += \
     orderplayerwindow.cpp
 
 HEADERS += \
+    color_octree/coloroctree.h \
+    color_octree/imageutil.h \
     desktoplyricwidget.h \
     facile_menu/facilemenu.h \
     facile_menu/facilemenuitem.h \

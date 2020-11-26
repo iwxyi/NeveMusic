@@ -114,8 +114,13 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     ui->scrollArea->verticalScrollBar()->setStyleSheet(vScrollBarSS);
     ui->searchResultTable->verticalScrollBar()->setStyleSheet(vScrollBarSS);
     ui->searchResultTable->horizontalScrollBar()->setStyleSheet(hScrollBarSS);
-    ui->listTabWidget->removeTab(3); // TOOD: 歌单部分没做好，先隐藏
+    ui->listTabWidget->removeTab(LISTTAB_PLAYLIST); // TOOD: 歌单部分没做好，先隐藏
     ui->titleButton->setText(settings.value("music/title", "Lazy点歌姬").toString());
+
+    QPalette pa;
+    pa.setColor(QPalette::Highlight, QColor(100, 149, 237, 88));
+    QApplication::setPalette(pa);
+
     connect(ui->searchResultTable->horizontalHeader(), SIGNAL(sectionClicked(int)), this, SLOT(sortSearchResult(int)));
 
     connect(player, &QMediaPlayer::positionChanged, this, [=](qint64 position){
@@ -164,6 +169,10 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     bool lyricStack = settings.value("music/lyricStream", false).toBool();
     if (lyricStack)
         ui->bodyStackWidget->setCurrentWidget(ui->lyricsPage);
+
+    blurBg = settings.value("music/blurBg", blurBg).toBool();
+    blurAlpha = settings.value("music/blurAlpha", blurAlpha).toInt();
+    themeColor = settings.value("music/themeColor", themeColor).toBool();
 
     // 读取数据
     ui->listTabWidget->setCurrentIndex(settings.value("orderplayerwindow/tabIndex").toInt());
@@ -353,9 +362,9 @@ void OrderPlayerWindow::setSearchResultTable(SongList songs)
         albumCol,
         durationCol
     };
+    table->setColumnCount(4);
     QStringList headers{"标题", "艺术家", "专辑", "时长"};
     table->setHorizontalHeaderLabels(headers);
-    table->setColumnCount(4);
 
     QFontMetrics fm(font());
     int fw = fm.horizontalAdvance("哈哈哈哈哈哈哈哈哈哈哈哈哈哈哈哈");
@@ -584,17 +593,19 @@ void OrderPlayerWindow::paintEvent(QPaintEvent *e)
 {
     QMainWindow::paintEvent(e);
 
-    QPainter painter(this);
-    painter.fillRect(rect(), QColor(245, 245, 247));
-    if (!currentBlurBg.isNull())
+    if (blurBg)
     {
-        painter.setOpacity((double)currentBgAlpha / 255);
-        painter.drawPixmap(rect(), currentBlurBg);
-    }
-    if (!prevBlurBg.isNull() && prevBgAlpha)
-    {
-        painter.setOpacity((double)prevBgAlpha / 255);
-        painter.drawPixmap(rect(), prevBlurBg);
+        QPainter painter(this);
+        if (!currentBlurBg.isNull())
+        {
+            painter.setOpacity((double)currentBgAlpha / 255);
+            painter.drawPixmap(rect(), currentBlurBg);
+        }
+        if (!prevBlurBg.isNull() && prevBgAlpha)
+        {
+            painter.setOpacity((double)prevBgAlpha / 255);
+            painter.drawPixmap(rect(), prevBlurBg);
+        }
     }
 }
 
@@ -635,6 +646,16 @@ void OrderPlayerWindow::showTabAnimation(QPoint center, QString text)
     NumberAnimation *animation = new NumberAnimation(text, color, this);
     animation->setCenter(center + QPoint(rand() % 32 - 16, rand() % 32 - 16));
     animation->startAnimation();
+}
+
+void OrderPlayerWindow::setPaletteBgProg(double x)
+{
+    this->paletteAlpha = x;
+}
+
+double OrderPlayerWindow::getPaletteBgProg() const
+{
+    return paletteAlpha;
 }
 
 /**
@@ -1202,7 +1223,11 @@ void OrderPlayerWindow::connectDesktopLyricSignals()
 
 void OrderPlayerWindow::setCurrentCover(const QPixmap &pixmap)
 {
-    setBlurBackground(currentCover = pixmap);
+    currentCover = pixmap;
+    if (themeColor)
+        setThemeColor(currentCover);
+    if (blurBg)
+        setBlurBackground(currentCover);
 }
 
 void OrderPlayerWindow::setBlurBackground(const QPixmap &bg)
@@ -1240,11 +1265,11 @@ void OrderPlayerWindow::setBlurBackground(const QPixmap &bg)
             rgbSum += c.red() + c.green() + c.blue();
         }
     }
-    int addin = rgbSum * 64 / (255*3*m*m);
+    int addin = rgbSum * blurAlpha / (255*3*m*m);
 
     // 半透明
     currentBlurBg = clip;
-    currentBgAlpha = 32 + addin;
+    currentBgAlpha = qMin(255, blurAlpha + addin);
 
     // 出现动画
     QPropertyAnimation* ani1 = new QPropertyAnimation(this, "appearBgProg");
@@ -1277,6 +1302,60 @@ void OrderPlayerWindow::setBlurBackground(const QPixmap &bg)
         update();
     });
     ani2->start();
+}
+
+void OrderPlayerWindow::setThemeColor(const QPixmap &cover)
+{
+    QColor bg, fg, sbg, sfg;
+    auto colors = ImageUtil::extractImageThemeColors(cover.toImage(), 7);
+    ImageUtil::getBgFgSgColor(colors, &bg, &fg, &sbg, &sfg);
+
+    prevPa = BFSColor::fromPalette(palette());
+    currentPa = BFSColor(QList<QColor>{bg, fg,sbg, sfg});
+
+    QPropertyAnimation* ani = new QPropertyAnimation(this, "paletteProg");
+    ani->setStartValue(0);
+    ani->setEndValue(1.0);
+    ani->setDuration(500);
+    connect(ani, &QPropertyAnimation::valueChanged, this, [=](const QVariant& val){
+        double d = val.toDouble();
+        BFSColor bfs = prevPa + (currentPa - prevPa) * d;
+        QColor bg, fg, sbg, sfg;
+        bfs.toColors(&bg, &fg, &sbg, &sfg);
+
+        QPalette pa;
+        pa.setColor(QPalette::Window, bg);
+        pa.setColor(QPalette::Background, bg);
+        pa.setColor(QPalette::Button, bg);
+
+        pa.setColor(QPalette::Foreground, fg);
+        pa.setColor(QPalette::Text, fg);
+        pa.setColor(QPalette::ButtonText, fg);
+        pa.setColor(QPalette::WindowText, fg);
+        pa.setColor(QPalette::HighlightedText, fg);
+
+        pa.setColor(QPalette::Highlight, sbg);
+
+        QApplication::setPalette(pa);
+        setPalette(pa);
+
+        ui->lyricWidget->setColors(sfg, fg);
+        desktopLyric->setColors(sfg, fg);
+        ui->playingNameLabel->setPalette(pa);
+        ui->titleButton->setPalette(pa);
+    });
+    connect(ani, SIGNAL(finished()), ani, SLOT(deleteLater()));
+    ani->start();
+
+    // 菜单直接切换，不进行动画
+    QColor halfSg = sfg;
+    halfSg.setAlpha(halfSg.alpha() / 2);
+    FacileMenu::normal_bg = bg;
+    FacileMenu::hover_bg = halfSg;
+    FacileMenu::press_bg = sfg;
+    FacileMenu::text_fg = fg;
+
+    qDebug() << "当前颜色：" << bg << fg << sfg;
 }
 
 /**
@@ -1826,4 +1905,31 @@ void OrderPlayerWindow::adjustCurrentLyricTime(QString lyric)
     // 调整桌面歌词
     desktopLyric->setLyric(lyric);
     desktopLyric->setPosition(player->position());
+}
+
+void OrderPlayerWindow::on_settingsButton_clicked()
+{
+    FacileMenu* menu = new FacileMenu(this);
+    menu->addAction("模糊背景", [=]{
+        settings.setValue("music/blurBg", blurBg = !blurBg);
+        if (blurBg)
+            setBlurBackground(currentCover);
+        update();
+    })->setChecked(blurBg);
+    QStringList sl{"32", "64", "96", "128"/*, "160", "192", "224", "256"*/};
+    auto blurAlphaMenu = menu->addMenu("模糊透明度");
+    menu->lastAction()->hide(!blurBg);
+    blurAlphaMenu->addOptions(sl, blurAlpha / 32 - 1, [=](int index){
+        blurAlpha = (index+1) * 32;
+        settings.setValue("music/blurAlpha", blurAlpha);
+        setBlurBackground(currentCover);
+    });
+    menu->split()->addAction("主题变色", [=]{
+        settings.setValue("music/themeColor", themeColor = !themeColor);
+        if (themeColor)
+            setThemeColor(currentCover);
+        update();
+    })->setChecked(themeColor);
+
+    menu->exec();
 }
