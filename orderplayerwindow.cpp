@@ -7,7 +7,7 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
       settings(QApplication::applicationDirPath()+"/musics.ini", QSettings::Format::IniFormat),
       musicsFileDir(QApplication::applicationDirPath()+"/musics"),
       player(new QMediaPlayer(this)),
-      desktopLyric(new DesktopLyricWidget(nullptr)),
+      desktopLyric(new DesktopLyricWidget(settings, nullptr)),
       expandPlayingButton(new InteractiveButtonBase(this)),
       playingPositionTimer(new QTimer(this))
 {
@@ -117,6 +117,9 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     ui->listTabWidget->removeTab(LISTTAB_PLAYLIST); // TOOD: 歌单部分没做好，先隐藏
     ui->titleButton->setText(settings.value("music/title", "Lazy点歌姬").toString());
 
+    if (settings.value("music/hideTab", false).toBool())
+        ui->listTabWidget->tabBar()->hide();
+
     QPalette pa;
     pa.setColor(QPalette::Highlight, QColor(100, 149, 237, 88));
     QApplication::setPalette(pa);
@@ -173,6 +176,7 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     blurBg = settings.value("music/blurBg", blurBg).toBool();
     blurAlpha = settings.value("music/blurAlpha", blurAlpha).toInt();
     themeColor = settings.value("music/themeColor", themeColor).toBool();
+    doubleClickToPlay = settings.value("music/doubleClickToPlay", false).toBool();
 
     // 读取数据
     ui->listTabWidget->setCurrentIndex(settings.value("orderplayerwindow/tabIndex").toInt());
@@ -341,7 +345,7 @@ void OrderPlayerWindow::searchMusic(QString key)
                     break;
                 sumLatency += orderSongs.at(i).duration;
             }
-            emit signalOrderSongSucceed(song, sumLatency);
+            emit signalOrderSongSucceed(song, sumLatency, orderSongs.size());
         }
     });
     manager->get(*request);
@@ -355,6 +359,7 @@ void OrderPlayerWindow::setSearchResultTable(SongList songs)
     QTableWidget* table = ui->searchResultTable;
     table->clear();
     searchResultPlayLists.clear();
+    table->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
 
     enum {
         titleCol,
@@ -388,6 +393,10 @@ void OrderPlayerWindow::setSearchResultTable(SongList songs)
         table->setItem(row, albumCol, createItem(song.album.name));
         table->setItem(row, durationCol, createItem(msecondToString(song.duration)));
     }
+
+    QTimer::singleShot(0, [=]{
+        table->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
+    });
 }
 
 void OrderPlayerWindow::setSearchResultTable(PlayListList playLists)
@@ -549,8 +558,16 @@ bool OrderPlayerWindow::isNotPlaying() const
             && (!playingSong.isValid() || player->position() == 0);
 }
 
-void OrderPlayerWindow::showEvent(QShowEvent *)
+void OrderPlayerWindow::showEvent(QShowEvent *e)
 {
+    QMainWindow::showEvent(e);
+
+    static bool firstShow = true;
+    if (firstShow)
+    {
+        firstShow = false;
+    }
+
     restoreGeometry(settings.value("orderplayerwindow/geometry").toByteArray());
     restoreState(settings.value("orderplayerwindow/state").toByteArray());
     ui->splitter->restoreState(settings.value("orderplayerwindow/splitterState").toByteArray());
@@ -581,6 +598,8 @@ void OrderPlayerWindow::closeEvent(QCloseEvent *)
     // 保存位置
     if (!desktopLyric->isHidden())
         desktopLyric->close();
+
+    emit signalWindowClosed();
 }
 
 void OrderPlayerWindow::resizeEvent(QResizeEvent *)
@@ -667,6 +686,7 @@ void OrderPlayerWindow::on_searchResultTable_cellActivated(int row, int)
     if (searchResultSongs.size())
     {
         Song song = searchResultSongs.at(row);
+        removeOrder(SongList{song});
         activeSong(song);
     }
     else if (searchResultPlayLists.size())
@@ -712,7 +732,7 @@ void OrderPlayerWindow::on_searchResultTable_customContextMenuRequested(const QP
             appendOrderSongs(songs);
         })->disable(!currentSong.isValid());
 
-        menu->addAction("添加常时播放", [=]{
+        menu->addAction("添加固定播放", [=]{
             addNormal(songs);
         })->disable(!currentSong.isValid());
 
@@ -773,7 +793,7 @@ void OrderPlayerWindow::playNext()
 {
     if (!orderSongs.size()) // 播放列表全部结束
     {
-        // 查看常时列表
+        // 查看固定列表
         if (!normalSongs.size())
             return ;
 
@@ -804,15 +824,15 @@ void OrderPlayerWindow::appendOrderSongs(SongList songs)
         addDownloadSong(song);
         showTabAnimation(center, "+1");
     }
-    saveSongList("music/order", orderSongs);
-    setSongModelToView(orderSongs, ui->orderSongsListView);
 
     if (isNotPlaying() && orderSongs.size())
     {
         qDebug() << "当前未播放，开始播放列表";
         startPlaySong(orderSongs.takeFirst());
-        setSongModelToView(orderSongs, ui->orderSongsListView);
     }
+
+    saveSongList("music/order", orderSongs);
+    setSongModelToView(orderSongs, ui->orderSongsListView);
 
     downloadNext();
 }
@@ -831,14 +851,16 @@ void OrderPlayerWindow::appendNextSongs(SongList songs)
         addDownloadSong(song);
         showTabAnimation(center, "+1");
     }
-    saveSongList("music/order", orderSongs);
-    setSongModelToView(orderSongs, ui->orderSongsListView);
 
-    if (isNotPlaying() && songs.size())
+    // 一般不会自动播放，除非没有在放的歌
+    /*if (isNotPlaying() && !playingSong.isValid() && songs.size())
     {
         qDebug() << "当前未播放，开始播放本首歌";
-        startPlaySong(songs.first());
-    }
+        startPlaySong(orderSongs.takeFirst());
+    }*/
+
+    saveSongList("music/order", orderSongs);
+    setSongModelToView(orderSongs, ui->orderSongsListView);
 
     downloadNext();
 }
@@ -1016,11 +1038,19 @@ void OrderPlayerWindow::downloadSong(Song song)
         connect(reply1, &QNetworkReply::finished, &loop, &QEventLoop::quit);
         //开启子事件循环
         loop.exec();
-        QByteArray baData1 = reply1->readAll();
+        QByteArray mp3Ba = reply1->readAll();
 
+        // 解析MP3标签
+        try {
+            readMp3Data(mp3Ba);
+        } catch(...) {
+            qDebug() << "读取音乐标签出错";
+        }
+
+        // 保存到文件
         QFile file(songPath(song));
         file.open(QIODevice::WriteOnly);
-        file.write(baData1);
+        file.write(mp3Ba);
         file.flush();
         file.close();
 
@@ -1193,7 +1223,7 @@ void OrderPlayerWindow::connectDesktopLyricSignals()
         desktopLyric->close();
         desktopLyric->deleteLater();
 
-        desktopLyric = new DesktopLyricWidget(nullptr);
+        desktopLyric = new DesktopLyricWidget(settings, nullptr);
         connectDesktopLyricSignals();
         desktopLyric->show();
 
@@ -1332,9 +1362,9 @@ void OrderPlayerWindow::setThemeColor(const QPixmap &cover)
         pa.setColor(QPalette::Text, fg);
         pa.setColor(QPalette::ButtonText, fg);
         pa.setColor(QPalette::WindowText, fg);
-        pa.setColor(QPalette::HighlightedText, fg);
 
         pa.setColor(QPalette::Highlight, sbg);
+        pa.setColor(QPalette::HighlightedText, sfg);
 
         QApplication::setPalette(pa);
         setPalette(pa);
@@ -1343,6 +1373,7 @@ void OrderPlayerWindow::setThemeColor(const QPixmap &cover)
         desktopLyric->setColors(sfg, fg);
         ui->playingNameLabel->setPalette(pa);
         ui->titleButton->setPalette(pa);
+        ui->titleButton->setTextColor(fg);
     });
     connect(ani, SIGNAL(finished()), ani, SLOT(deleteLater()));
     ani->start();
@@ -1356,6 +1387,60 @@ void OrderPlayerWindow::setThemeColor(const QPixmap &cover)
     FacileMenu::text_fg = fg;
 
     qDebug() << "当前颜色：" << bg << fg << sfg;
+}
+
+/**
+ * 参考链接：https://blog.csdn.net/weixin_37608233/article/details/82930197
+ */
+void OrderPlayerWindow::readMp3Data(const QByteArray &array)
+{
+    return ; // 仅供测试
+    // ID3V2 标签头
+    std::string header = array.mid(0, 3).toStdString(); // [3] 必须为ID3
+    char ver = *array.mid(3, 1).data(); // [1] 版本号03=v2.3, 04=v2.4
+    char revision = *array.mid(4, 1).data(); // [1] 副版本号
+    char flag = *array.mid(5, 1).data(); // [1] 标志
+    char* sizes = array.mid(6, 4).data(); // [4] 标签大小，包括标签帧和标签头（不包括扩展标签头的10字节）
+    int size = (sizes[0]<<24)+(sizes[1]<<16)+(sizes[2]<<8)+sizes[3];
+    qDebug() << QString::fromStdString(header) << size;
+
+    QHash<QString, QString>frameIds;
+    frameIds.insert("TIT2", "标题");
+    frameIds.insert("TPE1", "作者");
+    frameIds.insert("TALB", "专辑");
+    frameIds.insert("TRCK", "音轨"); // 直接数字 // ???格式：N/M 其中N为专集中的第N首，M为专集中共M首，N和M为ASCII码表示的数字
+    frameIds.insert("TYER", "年代"); // 用ASCII码表示的数字
+    frameIds.insert("TCON", "类型"); // 直接用字符串表示
+    frameIds.insert("COMM", "备注"); // 格式："eng\0备注内容"，其中eng表示备注所使用的自然语言
+    frameIds.insert("APIC", "专辑图片"); // png文件标志的前两个字节为89 50；jpeg文件标志的前两个字节为FF,D8；
+    frameIds.insert("TSSE", "专辑图片"); // Lavf56.4.101
+
+    // 标签帧
+    int pos = 10; // 标签头10字节
+    while (pos < size)
+    {
+        std::string frameId = array.mid(pos, 4).toStdString(); // [4] 帧标志
+        char* sizes = array.mid(pos+4, 4).data(); // [4] 帧内容大小（不包括帧头）
+        char* frameFlag = array.mid(pos+8, 2).data(); // [2] 存放标志
+        int frameSize = (sizes[0]<<24)+(sizes[1]<<16)+(sizes[2]<<8)+sizes[3];
+        qDebug() << "pos =" << pos << "    id =" << QString::fromStdString(frameId) << "   size =" << frameSize;
+        pos += 10; // 帧标签10字节
+        if (frameIds.contains(QString::fromStdString(frameId)))
+        {
+            QByteArray ba;
+            if (*array.mid(pos, 1).data() == 0 && *array.mid(pos+frameSize-1, 1).data()==0)
+                ba = array.mid(pos+1, frameSize-2);
+            else
+                ba = array.mid(pos, frameSize);
+            qDebug() << frameIds.value(QString::fromStdString(frameId)) << ba;
+        }
+        else if (frameSize < 1000)
+            qDebug() << array.mid(pos, frameSize);
+        else
+            qDebug() << array.mid(pos, 100) << "...";
+        pos += frameSize; // 帧内容x字节
+    }
+
 }
 
 /**
@@ -1510,29 +1595,11 @@ void OrderPlayerWindow::on_orderSongsListView_customContextMenuRequested(const Q
     })->disable(songs.size() != 1 || !currentSong.isValid());
 
     menu->addAction("下一首播放", [=]{
-        foreach (Song song, songs)
-        {
-            orderSongs.removeOne(song);
-        }
-        for (int i = songs.size()-1; i >= 0; i--)
-        {
-            orderSongs.insert(0, songs.at(i));
-        }
-        saveSongList("music/order", orderSongs);
-        setSongModelToView(orderSongs, ui->orderSongsListView);
+        appendNextSongs(songs);
     })->disable(!songs.size());
 
-    menu->split()->addAction("添加常时播放", [=]{
-        foreach (Song song, songs)
-        {
-            normalSongs.removeOne(song);
-        }
-        for (int i = songs.size()-1; i >= 0; i--)
-        {
-            normalSongs.insert(0, songs.at(i));
-        }
-        saveSongList("music/normal", normalSongs);
-        setSongModelToView(normalSongs, ui->normalSongsListView);
+    menu->split()->addAction("添加固定播放", [=]{
+        addNormal(songs);
     })->disable(!currentSong.isValid());
 
     menu->addAction("收藏", [=]{
@@ -1588,7 +1655,7 @@ void OrderPlayerWindow::on_favoriteSongsListView_customContextMenuRequested(cons
         appendOrderSongs(songs);
     })->disable(!songs.size());
 
-    menu->addAction("添加常时播放", [=]{
+    menu->addAction("添加固定播放", [=]{
         addNormal(songs);
     })->disable(!currentSong.isValid());
 
@@ -1682,7 +1749,7 @@ void OrderPlayerWindow::on_normalSongsListView_customContextMenuRequested(const 
         setSongModelToView(normalSongs, ui->normalSongsListView);
     })->disable(songs.size() != 1 || row >= normalSongs.size()-1);
 
-    menu->split()->addAction("移出常时播放", [=]{
+    menu->split()->addAction("移出固定播放", [=]{
         removeNormal(songs);
     })->disable(!songs.size());
 
@@ -1715,7 +1782,7 @@ void OrderPlayerWindow::on_historySongsListView_customContextMenuRequested(const
         appendOrderSongs(songs);
     })->disable(!songs.size());
 
-    menu->addAction("添加常时播放", [=]{
+    menu->addAction("添加固定播放", [=]{
         addNormal(songs);
     })->disable(!currentSong.isValid());
 
@@ -1910,12 +1977,27 @@ void OrderPlayerWindow::adjustCurrentLyricTime(QString lyric)
 void OrderPlayerWindow::on_settingsButton_clicked()
 {
     FacileMenu* menu = new FacileMenu(this);
-    menu->addAction("模糊背景", [=]{
+
+    menu->addAction("双击播放", [=]{
+        settings.setValue("music/doubleClickToPlay", doubleClickToPlay = !doubleClickToPlay);
+    })->check(doubleClickToPlay);
+
+    bool h = settings.value("music/hideTab", false).toBool();
+    menu->addAction("隐藏Tab", [=]{
+        settings.setValue("music/hideTab", !h);
+        if (h)
+            ui->listTabWidget->tabBar()->show();
+        else
+            ui->listTabWidget->tabBar()->hide();
+    })->check(h);
+
+    menu->split()->addAction("模糊背景", [=]{
         settings.setValue("music/blurBg", blurBg = !blurBg);
         if (blurBg)
             setBlurBackground(currentCover);
         update();
     })->setChecked(blurBg);
+
     QStringList sl{"32", "64", "96", "128"/*, "160", "192", "224", "256"*/};
     auto blurAlphaMenu = menu->addMenu("模糊透明度");
     menu->lastAction()->hide(!blurBg);
@@ -1924,6 +2006,7 @@ void OrderPlayerWindow::on_settingsButton_clicked()
         settings.setValue("music/blurAlpha", blurAlpha);
         setBlurBackground(currentCover);
     });
+
     menu->split()->addAction("主题变色", [=]{
         settings.setValue("music/themeColor", themeColor = !themeColor);
         if (themeColor)
