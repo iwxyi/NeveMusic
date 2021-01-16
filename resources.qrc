@@ -24,4 +24,8 @@
         <file alias="random">resources/icons/random.png</file>
         <file alias="order">resources/icons/order.png</file>
     </qresource>
+    <qresource prefix="/musics">
+        <file alias="netease">resources/musics/netease-cloud-music.png</file>
+        <file alias="qq">resources/musics/QQ-music.png</file>
+    </qresource>
 </RCC>
