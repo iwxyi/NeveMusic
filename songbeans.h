@@ -24,6 +24,7 @@ enum MusicSource
 struct Artist
 {
     qint64 id = 0;
+    QString mid;
     QString name;
     QString faceUrl;
 
@@ -31,6 +32,8 @@ struct Artist
     {
         Artist artist;
         artist.id = JVAL_LONG(id);
+        if (json.contains("mid"))
+            artist.mid = JVAL_STR(mid);
         artist.name = JVAL_STR(name);
         artist.faceUrl = JVAL_STR(img1v1Url);
         return artist;
@@ -40,6 +43,7 @@ struct Artist
     {
         Artist artist;
         artist.id = JVAL_LONG(id);
+        artist.mid = JVAL_STR(mid);
         artist.name = JVAL_STR(name);
 //        artist.faceUrl = JVAL_STR(img1v1Url);
         return artist;
@@ -49,6 +53,7 @@ struct Artist
     {
         QJsonObject json;
         json.insert("id", id);
+        json.insert("mid", mid);
         json.insert("name", name);
         json.insert("faceUrl", faceUrl);
         return json;
@@ -58,6 +63,7 @@ struct Artist
 struct Album
 {
     qint64 id = 0;
+    QString mid;
     QString name;
     int size = 0;
     int mark = 0;
@@ -66,6 +72,8 @@ struct Album
     {
         Album album;
         album.id = JVAL_LONG(id);
+        if (json.contains("mid"))
+            album.mid = JVAL_STR(mid);
         album.name = JVAL_STR(name);
         album.size = JVAL_INT(size);
         album.mark = JVAL_INT(mark);
@@ -76,6 +84,7 @@ struct Album
     {
         Album album;
         album.id = JVAL_LONG(id);
+        album.mid = JVAL_STR(mid);
         album.name = JVAL_STR(name);
 //        album.size = JVAL_INT(size);
 //        album.mark = JVAL_INT(mark);
@@ -86,6 +95,7 @@ struct Album
     {
         QJsonObject json;
         json.insert("id", id);
+        json.insert("mid", mid);
         json.insert("name", name);
         json.insert("size", size);
         json.insert("mark", mark);
@@ -96,6 +106,7 @@ struct Album
 struct Song
 {
     qint64 id = 0;
+    QString mid;
     QString name;
     int duration = 0;
     int mark = 0;
@@ -110,6 +121,7 @@ struct Song
     {
         Song song;
         song.id = JVAL_LONG(id);
+        song.mid = JVAL_STR(mid);
         song.name = JVAL_STR(name);
         QJsonArray array = json.value("artists").toArray();
         QStringList artistNameList;
@@ -136,6 +148,8 @@ struct Song
     {
         Song song;
         song.id = JVAL_LONG(id);
+        if (json.contains("mid"))
+            song.mid = JVAL_STR(mid);
         song.name = JVAL_STR(name);
         QJsonArray array = json.value("singer").toArray();
         QStringList artistNameList;
@@ -161,6 +175,7 @@ struct Song
     {
         QJsonObject json;
         json.insert("id", id);
+        json.insert("mid", mid);
         json.insert("name", name);
         json.insert("duration", duration);
         json.insert("mark", mark);

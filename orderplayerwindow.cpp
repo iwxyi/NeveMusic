@@ -304,10 +304,10 @@ void OrderPlayerWindow::searchMusic(QString key)
     QString url;
     switch (musicSource) {
     case NeteaseCloudMusic:
-        url = NETEASE_SERVER + "/search?keywords=" + key.toUtf8().toPercentEncoding();
+        url = NETEASE_SERVER + "/search?keywords=" + key.toUtf8().toPercentEncoding() + "&limit=80";
         break;
     case QQMusic:
-        url = QQMUSIC_SERVER + "/getSearchByKey?key=" + key.toUtf8().toPercentEncoding() + "&limit=50";
+        url = QQMUSIC_SERVER + "/getSearchByKey?key=" + key.toUtf8().toPercentEncoding() + "&limit=80";
         break;
     }
     QNetworkAccessManager* manager = new QNetworkAccessManager;
@@ -359,7 +359,6 @@ void OrderPlayerWindow::searchMusic(QString key)
             break;
         }
         searchResultSongs.clear();
-        qDebug() << songs.size();
         foreach (QJsonValue val, songs)
         {
             switch (musicSource) {
@@ -568,12 +567,22 @@ void OrderPlayerWindow::setSongModelToView(const SongList &songs, QListView *lis
  */
 QString OrderPlayerWindow::songPath(const Song &song) const
 {
-    return musicsFileDir.absoluteFilePath(snum(song.id) + ".mp3");
+    switch (song.source) {
+    case NeteaseCloudMusic:
+        return musicsFileDir.absoluteFilePath("netease_" + snum(song.id) + ".mp3");
+    case QQMusic:
+        return musicsFileDir.absoluteFilePath("qq_" + snum(song.id) + ".mp3");
+    }
 }
 
 QString OrderPlayerWindow::lyricPath(const Song &song) const
 {
-    return musicsFileDir.absoluteFilePath(snum(song.id) + ".lrc");
+    switch (song.source) {
+    case NeteaseCloudMusic:
+        return musicsFileDir.absoluteFilePath("netease_" + snum(song.id) + ".lrc");
+    case QQMusic:
+        return musicsFileDir.absoluteFilePath("qq_" + snum(song.id) + ".lrc");
+    }
 }
 
 QString OrderPlayerWindow::coverPath(const Song &song) const
@@ -1092,11 +1101,11 @@ void OrderPlayerWindow::downloadSong(Song song)
         QByteArray mp3Ba = reply1->readAll();
 
         // 解析MP3标签
-        try {
+        /*try {
             readMp3Data(mp3Ba);
         } catch(...) {
             qDebug() << "读取音乐标签出错";
-        }
+        }*/
 
         // 保存到文件
         QFile file(songPath(song));
@@ -1442,10 +1451,10 @@ void OrderPlayerWindow::setThemeColor(const QPixmap &cover)
 
 /**
  * 参考链接：https://blog.csdn.net/weixin_37608233/article/details/82930197
+ * 仅供测试
  */
 void OrderPlayerWindow::readMp3Data(const QByteArray &array)
 {
-    return ; // 仅供测试
     // ID3V2 标签头
     std::string header = array.mid(0, 3).toStdString(); // [3] 必须为ID3
     char ver = *array.mid(3, 1).data(); // [1] 版本号03=v2.3, 04=v2.4
@@ -2090,4 +2099,7 @@ void OrderPlayerWindow::on_musicSourceButton_clicked()
     settings.setValue("music/source", musicSource);
 
     setMusicIconBySource();
+
+    if (!ui->searchEdit->text().isEmpty())
+        on_searchEdit_returnPressed();
 }
