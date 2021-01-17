@@ -265,7 +265,7 @@ private:
     bool starting = true;
     QSettings settings;
     QDir musicsFileDir;
-    const QString API_DOMAIN = "http://iwxyi.com:3000/";
+    const QString API_DOMAIN = "http://iwxyi.com:3000";
     MusicSource musicSource = NeteaseCloudMusic;
     SongList searchResultSongs;
     PlayListList searchResultPlayLists;

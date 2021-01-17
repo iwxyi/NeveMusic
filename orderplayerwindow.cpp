@@ -244,7 +244,7 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     connect(expandPlayingButton, SIGNAL(clicked()), this, SLOT(slotExpandPlayingButtonClicked()));
     expandPlayingButton->show();
 
-     searchMusic("司夏"); // 测试用的
+    // searchMusic("司夏"); // 测试用的
 
     prevBlurBg = QPixmap(32, 32);
     prevBlurBg.fill(QColor(245, 245, 247));
@@ -2095,6 +2095,7 @@ void OrderPlayerWindow::on_settingsButton_clicked()
 
 void OrderPlayerWindow::on_musicSourceButton_clicked()
 {
+    return ;
     musicSource = (MusicSource)(((int)musicSource + 1) % 2);
     settings.setValue("music/source", musicSource);
 
