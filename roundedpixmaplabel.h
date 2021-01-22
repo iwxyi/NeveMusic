@@ -20,8 +20,9 @@ protected:
             return ;
         QPainter painter(this);
         QPainterPath path;
-        path.addRoundedRect(rect(), 4, 4);
+        path.addRoundedRect(rect(), 5, 5);
         painter.setClipPath(path);
+        painter.setRenderHint(QPainter::SmoothPixmapTransform);
         painter.drawPixmap(rect(), *pixmap);
     }
 };

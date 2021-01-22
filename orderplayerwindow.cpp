@@ -118,7 +118,7 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     ui->listTabWidget->removeTab(LISTTAB_PLAYLIST); // TOOD: 歌单部分没做好，先隐藏
     ui->titleButton->setText(settings.value("music/title", "Lazy点歌姬").toString());
 
-    const int btnR = 4;
+    const int btnR = 5;
     ui->titleButton->setRadius(btnR);
     ui->settingsButton->setRadius(btnR);
     ui->playButton->setRadius(btnR);

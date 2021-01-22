@@ -228,8 +228,8 @@ QTabBar::tab
 	background: transparent;
 	border-radius: 5px;
 	padding: 0px;
-	padding-left:14px;
-	padding-top: 4px;
+	padding-left:16px;
+	padding-top: 6px;
 	padding-bottom: 4px;
 }
 
