@@ -772,7 +772,7 @@ QTableCornerButton::section
        </widget>
       </item>
       <item>
-       <widget class="QSlider" name="playProgressSlider">
+       <widget class="ClickSlider" name="playProgressSlider">
         <property name="styleSheet">
          <string notr="true">QSlider{ border-color: #bcbcbc; }
 QSlider::groove:horizontal { border: 1px solid #999999; height: 1px; margin: 0px 0; left: 5px; right: 5px; }
@@ -807,7 +807,7 @@ QSlider::sub-page:horizontal{ background: qlineargradient(spread:pad, x1:0, y1:1
        </widget>
       </item>
       <item>
-       <widget class="QSlider" name="volumeSlider">
+       <widget class="ClickSlider" name="volumeSlider">
         <property name="maximumSize">
          <size>
           <width>120</width>
@@ -895,6 +895,11 @@ QSlider::sub-page:horizontal{ background: qlineargradient(spread:pad, x1:0, y1:1
    <class>InteractiveButtonBase</class>
    <extends>QPushButton</extends>
    <header>interactivebuttonbase.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ClickSlider</class>
+   <extends>QSlider</extends>
+   <header>clickslider.h</header>
   </customwidget>
  </customwidgets>
  <resources>

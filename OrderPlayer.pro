@@ -32,6 +32,7 @@ SOURCES += \
     orderplayerwindow.cpp
 
 HEADERS += \
+    clickslider.h \
     color_octree/coloroctree.h \
     color_octree/imageutil.h \
     desktoplyricwidget.h \

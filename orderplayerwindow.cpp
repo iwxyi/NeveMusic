@@ -168,6 +168,14 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
 
     connect(ui->lyricWidget, SIGNAL(signalAdjustLyricTime(QString)), this, SLOT(adjustCurrentLyricTime(QString)));
 
+    connect(ui->playProgressSlider, &ClickSlider::signalClickMove, this, [=](int position){
+        player->setPosition(position);
+    });
+    connect(ui->volumeSlider, &ClickSlider::signalClickMove, this, [=](int position){
+        player->setVolume(position);
+        settings.setValue("music/volume", position);
+    });
+
     musicsFileDir.mkpath(musicsFileDir.absolutePath());
     QTime time;
     time= QTime::currentTime();
@@ -1207,7 +1215,7 @@ void OrderPlayerWindow::downloadSong(Song song)
         //请求结束并下载完成后，退出子事件循环
         connect(reply1, &QNetworkReply::finished, &loop, &QEventLoop::quit);
         //开启子事件循环
-        loop.exec(QEventLoop::ExcludeUserInputEvents);
+        loop.exec();
         QByteArray mp3Ba = reply1->readAll();
         if (mp3Ba.isEmpty())
         {
@@ -1395,7 +1403,7 @@ void OrderPlayerWindow::downloadSongCover(Song song)
         //请求结束并下载完成后，退出子事件循环
         connect(reply1, &QNetworkReply::finished, &loop, &QEventLoop::quit);
         //开启子事件循环
-        loop.exec(QEventLoop::ExcludeUserInputEvents);
+        loop.exec();
         QByteArray baData1 = reply1->readAll();
         QPixmap pixmap;
         pixmap.loadFromData(baData1);
