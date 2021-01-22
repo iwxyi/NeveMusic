@@ -200,6 +200,8 @@ private slots:
 
     void on_musicSourceButton_clicked();
 
+    void on_nextSongButton_clicked();
+
 private:
     void searchMusic(QString key);
     void setSearchResultTable(SongList songs);

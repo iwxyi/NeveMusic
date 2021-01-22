@@ -23,6 +23,7 @@
         <file alias="playlist">resources/icons/playlist.png</file>
         <file alias="random">resources/icons/random.png</file>
         <file alias="order">resources/icons/order.png</file>
+        <file alias="next_song">resources/icons/next_song.png</file>
     </qresource>
     <qresource prefix="/musics">
         <file alias="netease">resources/musics/netease-cloud-music.png</file>

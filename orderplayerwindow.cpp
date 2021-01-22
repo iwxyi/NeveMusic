@@ -331,6 +331,8 @@ void OrderPlayerWindow::searchMusic(QString key)
     request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
     connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
         QByteArray data = reply->readAll();
+        manager->deleteLater();
+        delete request;
         QJsonParseError error;
         QJsonDocument document = QJsonDocument::fromJson(data, &error);
         if (error.error != QJsonParseError::NoError)
@@ -824,8 +826,8 @@ void OrderPlayerWindow::on_searchResultTable_customContextMenuRequested(const QP
         })->disable(!currentSong.isValid())
                 ->text(favoriteSongs.contains(currentSong), "从收藏中移除", "添加到收藏");
 
-        menu->addAction("查看分享的歌单", [=]{
-            QString url = QInputDialog::getText(this, "导入歌单", "支持网易云音乐、QQ音乐的分享链接");
+        menu->addAction("打开分享的歌单", [=]{
+            QString url = QInputDialog::getText(this, "查看歌单", "支持网易云音乐、QQ音乐的分享链接");
             if (url.isEmpty())
                 return ;
             openPlayList(url);
@@ -1079,6 +1081,8 @@ void OrderPlayerWindow::downloadSong(Song song)
     request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
     connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
         QByteArray baData = reply->readAll();
+        manager->deleteLater();
+        delete request;
 
         if (song.source == QQMusic)
         {
@@ -1264,6 +1268,8 @@ void OrderPlayerWindow::downloadSongLyric(Song song)
     request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
     connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
         QByteArray baData = reply->readAll();
+        manager->deleteLater();
+        delete request;
         QJsonParseError error;
         QJsonDocument document = QJsonDocument::fromJson(baData, &error);
         if (error.error != QJsonParseError::NoError)
@@ -1335,6 +1341,8 @@ void OrderPlayerWindow::downloadSongCover(Song song)
     request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
     connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
         QByteArray baData = reply->readAll();
+        manager->deleteLater();
+        delete request;
         QJsonParseError error;
         QJsonDocument document = QJsonDocument::fromJson(baData, &error);
         if (error.error != QJsonParseError::NoError)
@@ -1457,7 +1465,10 @@ void OrderPlayerWindow::openPlayList(QString shareUrl)
         request->setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded; charset=UTF-8");
         request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
         connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
-            return openPlayList(reply->rawHeader("Location"));
+            QString url = reply->rawHeader("Location");
+            manager->deleteLater();
+            delete request;
+            return openPlayList(url);
         });
         manager->get(*request);
         return ;
@@ -1503,6 +1514,8 @@ void OrderPlayerWindow::openPlayList(QString shareUrl)
     request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
     connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
         QByteArray data = reply->readAll();
+        manager->deleteLater();
+        delete request;
         QJsonParseError error;
         QJsonDocument document = QJsonDocument::fromJson(data, &error);
         if (error.error != QJsonParseError::NoError)
@@ -1528,6 +1541,7 @@ void OrderPlayerWindow::openPlayList(QString shareUrl)
                 searchResultSongs << Song::fromNeteaseShareJson(val.toObject());
             }
             setSearchResultTable(searchResultSongs);
+            ui->bodyStackWidget->setCurrentWidget(ui->searchResultPage);
             break;
         }
         case QQMusic:
@@ -1545,6 +1559,7 @@ void OrderPlayerWindow::openPlayList(QString shareUrl)
                 searchResultSongs << Song::fromQQMusicJson(val.toObject());
             }
             setSearchResultTable(searchResultSongs);
+            ui->bodyStackWidget->setCurrentWidget(ui->searchResultPage);
             break;
         }
         }
@@ -2034,8 +2049,8 @@ void OrderPlayerWindow::on_favoriteSongsListView_customContextMenuRequested(cons
         setSongModelToView(favoriteSongs, ui->favoriteSongsListView);
     })->disable(songs.size() != 1 || row >= favoriteSongs.size()-1);
 
-    menu->addAction("导入分享的歌单", [=]{
-        QString url = QInputDialog::getText(this, "导入歌单", "支持网易云音乐、QQ音乐的分享链接");
+    menu->addAction("打开分享的歌单", [=]{
+        QString url = QInputDialog::getText(this, "查看歌单", "支持网易云音乐、QQ音乐的分享链接");
         if (url.isEmpty())
             return ;
         openPlayList(url);
@@ -2398,4 +2413,9 @@ void OrderPlayerWindow::on_musicSourceButton_clicked()
         on_searchEdit_returnPressed();
     else
         ui->searchEdit->clear();
+}
+
+void OrderPlayerWindow::on_nextSongButton_clicked()
+{
+    playNext();
 }
