@@ -224,6 +224,7 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
         ui->desktopLyricButton->setIcon(QIcon(":/icons/lyric_hide"));
     }
 
+    // 还原上次播放的歌曲
     Song currentSong = Song::fromJson(settings.value("music/currentSong").toJsonObject());
     if (currentSong.isValid())
     {
@@ -244,7 +245,18 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     connect(expandPlayingButton, SIGNAL(clicked()), this, SLOT(slotExpandPlayingButtonClicked()));
     expandPlayingButton->show();
 
-    searchMusic("司夏"); // 测试用的
+    // 还原搜索结果
+    QString searchKey = settings.value("music/searchKey").toString();
+    if (!searchKey.isEmpty())
+    {
+        QTimer::singleShot(100, [=]{
+            if (!currentSong.isValid())
+                ui->bodyStackWidget->setCurrentWidget(ui->searchResultPage);
+
+            ui->searchEdit->setText(searchKey);
+            searchMusic(searchKey);
+        });
+    }
 
     prevBlurBg = QPixmap(32, 32);
     prevBlurBg.fill(QColor(245, 245, 247));
@@ -275,6 +287,9 @@ bool OrderPlayerWindow::hasSongInOrder(QString by)
 void OrderPlayerWindow::on_searchEdit_returnPressed()
 {
     QString text = ui->searchEdit->text();
+    if (text.isEmpty())
+        return ;
+    settings.setValue("music/searchKey", text);
     searchMusic(text);
     ui->bodyStackWidget->setCurrentWidget(ui->searchResultPage);
 }
@@ -808,6 +823,13 @@ void OrderPlayerWindow::on_searchResultTable_customContextMenuRequested(const QP
                 removeFavorite(songs);
         })->disable(!currentSong.isValid())
                 ->text(favoriteSongs.contains(currentSong), "从收藏中移除", "添加到收藏");
+
+        menu->addAction("查看分享的歌单", [=]{
+            QString url = QInputDialog::getText(this, "导入歌单", "支持网易云音乐、QQ音乐的分享链接");
+            if (url.isEmpty())
+                return ;
+            openPlayList(url);
+        });
 
         menu->exec();
     }
@@ -1404,6 +1426,87 @@ void OrderPlayerWindow::setCurrentLyric(QString lyric)
     ui->lyricWidget->setLyric(lyric);
 }
 
+void OrderPlayerWindow::openPlayList(QString shareUrl)
+{
+    MusicSource source;
+    QString playlistUrl;
+    QString id;
+    if (shareUrl.contains("music.163.com"))
+    {
+        source = NeteaseCloudMusic;
+        QRegularExpression re("id=(\\d+)");
+        QRegularExpressionMatch match;
+        if (shareUrl.indexOf(re, 0, &match) == -1)
+            return ;
+        id = match.captured(1);
+        playlistUrl = NETEASE_SERVER + "/playlist/detail?id=" + id;
+    }
+    else if (shareUrl.contains("qq"))
+    {
+        source = QQMusic;
+
+    }
+    else
+    {
+        qWarning() << "无法识别的歌单链接";
+        return ;
+    }
+
+    QNetworkAccessManager* manager = new QNetworkAccessManager;
+    QNetworkRequest* request = new QNetworkRequest(playlistUrl);
+    request->setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded; charset=UTF-8");
+    request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
+    connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
+        QByteArray data = reply->readAll();
+        QJsonParseError error;
+        QJsonDocument document = QJsonDocument::fromJson(data, &error);
+        if (error.error != QJsonParseError::NoError)
+        {
+            qDebug() << error.errorString();
+            return ;
+        }
+        QJsonObject json = document.object();
+        QJsonObject response;
+        SongList songs;
+        switch (musicSource) {
+        case NeteaseCloudMusic:
+        {
+            if (json.value("code").toInt() != 200)
+            {
+                qDebug() << ("返回结果不为200：") << json.value("message").toString();
+                return ;
+            }
+            QJsonArray array = json.value("playlist").toObject().value("tracks").toArray();
+            searchResultSongs.clear();
+            foreach (QJsonValue val, array)
+            {
+                searchResultSongs << Song::fromNeteaseShareJson(val.toObject());
+            }
+            setSearchResultTable(searchResultSongs);
+            break;
+        }
+        case QQMusic:
+        {
+            QJsonValue val = json.value("response");
+            if (!val.isObject()) // 不是正常搜索结果对象
+            {
+                qDebug() << val;
+                return ;
+            }
+            response = val.toObject();
+            if (response.value("code").toInt() != 0)
+            {
+                qDebug() << ("返回结果不为0：") << json.value("message").toString();
+                return ;
+            }
+            break;
+        }
+        }
+    });
+    manager->get(*request);
+
+}
+
 void OrderPlayerWindow::adjustExpandPlayingButton()
 {
     QRect rect(ui->playingCoverLabel->mapTo(this, QPoint(0,0)), QSize(ui->listTabWidget->width(), ui->playingCoverLabel->height()));
@@ -1885,6 +1988,13 @@ void OrderPlayerWindow::on_favoriteSongsListView_customContextMenuRequested(cons
         setSongModelToView(favoriteSongs, ui->favoriteSongsListView);
     })->disable(songs.size() != 1 || row >= favoriteSongs.size()-1);
 
+    menu->addAction("导入分享的歌单", [=]{
+        QString url = QInputDialog::getText(this, "导入歌单", "支持网易云音乐、QQ音乐的分享链接");
+        if (url.isEmpty())
+            return ;
+        openPlayList(url);
+    });
+
     menu->split()->addAction("移出收藏", [=]{
         removeFavorite(songs);
     })->disable(!songs.size());
@@ -2240,4 +2350,6 @@ void OrderPlayerWindow::on_musicSourceButton_clicked()
 
     if (!ui->searchEdit->text().isEmpty())
         on_searchEdit_returnPressed();
+    else
+        ui->searchEdit->clear();
 }

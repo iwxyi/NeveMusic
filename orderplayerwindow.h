@@ -46,7 +46,7 @@ QT_END_NAMESPACE
 #define NETEASE_SERVER QString("http://iwxyi.com:3000")
 #define QQMUSIC_SERVER QString("http://iwxyi.com:3200")
 
-#define MUSIC_DEB if (0) qDebug()
+#define MUSIC_DEB if (1) qDebug()
 
 enum MusicQuality
 {
@@ -232,6 +232,7 @@ private:
     void downloadSongLyric(Song song);
     void downloadSongCover(Song song);
     void setCurrentLyric(QString lyric);
+    void openPlayList(QString shareUrl);
 
     void adjustExpandPlayingButton();
     void connectDesktopLyricSignals();
