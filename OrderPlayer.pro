@@ -42,6 +42,7 @@ HEADERS += \
     lyricstreamwidget.h \
     numberanimation.h \
     orderplayerwindow.h \
+    roundedpixmaplabel.h \
     songbeans.h
 
 FORMS += \

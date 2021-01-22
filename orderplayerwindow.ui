@@ -226,6 +226,11 @@ QTabWidget::pane
 QTabBar::tab
 {
 	background: transparent;
+	border-radius: 5px;
+	padding: 0px;
+	padding-left:14px;
+	padding-top: 4px;
+	padding-bottom: 4px;
 }
 
 QTabBar::tab:hover
@@ -235,7 +240,7 @@ QTabBar::tab:hover
 
 QTabBar::tab:selected
 {
-	background: rgba(255,255,255,128);
+	background: rgba(255,255,255,128);	
 }
 
 QTabBar::tab:disabled
@@ -249,7 +254,7 @@ QTabBar::tab:disabled
            <enum>QTabWidget::Rounded</enum>
           </property>
           <property name="currentIndex">
-           <number>3</number>
+           <number>2</number>
           </property>
           <widget class="QWidget" name="tab">
            <property name="styleSheet">
@@ -546,7 +551,7 @@ QTabBar::tab:disabled
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_5" stretch="0,1">
           <item>
-           <widget class="QLabel" name="playingCoverLabel">
+           <widget class="RoundedPixmapLabel" name="playingCoverLabel">
             <property name="minimumSize">
              <size>
               <width>50</width>
@@ -900,6 +905,11 @@ QSlider::sub-page:horizontal{ background: qlineargradient(spread:pad, x1:0, y1:1
    <class>ClickSlider</class>
    <extends>QSlider</extends>
    <header>clickslider.h</header>
+  </customwidget>
+  <customwidget>
+   <class>RoundedPixmapLabel</class>
+   <extends>QLabel</extends>
+   <header>roundedpixmaplabel.h</header>
   </customwidget>
  </customwidgets>
  <resources>
