@@ -1063,7 +1063,7 @@ void OrderPlayerWindow::downloadSong(Song song)
         return ;
     downloadingSong = song;
     QString url;
-    switch (musicSource) {
+    switch (song.source) {
     case NeteaseCloudMusic:
         url = NETEASE_SERVER + "/song/url?id=" + snum(song.id);
         break;
@@ -1099,7 +1099,7 @@ void OrderPlayerWindow::downloadSong(Song song)
         }
         QJsonObject json = document.object();
         QString fileUrl;
-        switch (musicSource) {
+        switch (song.source) {
         case NeteaseCloudMusic:
         {
             if (json.value("code").toInt() != 200)
@@ -1249,7 +1249,7 @@ void OrderPlayerWindow::downloadSongLyric(Song song)
 //    downloadingSong = song; // 忘了为什么要加这句了？
 
     QString url;
-    switch (musicSource) {
+    switch (song.source) {
     case NeteaseCloudMusic:
         url = NETEASE_SERVER + "/lyric?id=" + snum(song.id);
         break;
@@ -1274,7 +1274,7 @@ void OrderPlayerWindow::downloadSongLyric(Song song)
         QJsonObject json = document.object();
 
         QString lrc;
-        switch (musicSource) {
+        switch (song.source) {
         case NeteaseCloudMusic:
             if (json.value("code").toInt() != 200)
             {
@@ -1319,7 +1319,7 @@ void OrderPlayerWindow::downloadSongCover(Song song)
 //    downloadingSong = song; // 忘了为什么要加这句了？
 
     QString url;
-    switch (musicSource) {
+    switch (song.source) {
     case NeteaseCloudMusic:
         url = NETEASE_SERVER + "/song/detail?ids=" + snum(song.id);
         break;
@@ -1345,7 +1345,7 @@ void OrderPlayerWindow::downloadSongCover(Song song)
         QJsonObject json = document.object();
 
         QString url;
-        switch (musicSource) {
+        switch (song.source) {
         case NeteaseCloudMusic:
         {
             if (json.value("code").toInt() != 200)
@@ -1431,27 +1431,72 @@ void OrderPlayerWindow::openPlayList(QString shareUrl)
     MusicSource source;
     QString playlistUrl;
     QString id;
-    if (shareUrl.contains("music.163.com"))
+    qDebug() << "歌单URL：" << shareUrl;
+    if (shareUrl.contains("music.163.com/playlist?")) // 网易云音乐的分享
     {
-        source = NeteaseCloudMusic;
+        source = this->musicSource;
         QRegularExpression re("id=(\\d+)");
         QRegularExpressionMatch match;
         if (shareUrl.indexOf(re, 0, &match) == -1)
+        {
+            qWarning() << "无法解析歌单链接：" << shareUrl;
             return ;
+        }
         id = match.captured(1);
         playlistUrl = NETEASE_SERVER + "/playlist/detail?id=" + id;
     }
-    else if (shareUrl.contains("qq"))
+    else if (shareUrl.contains("c.y.qq.com/base/fcgi-bin/u?__=")) // QQ音乐压缩
     {
-        source = QQMusic;
+        // https://c.y.qq.com/base/fcgi-bin/u?__=HdLP6Kp
+        if (!shareUrl.startsWith("http"))
+            shareUrl = "https://" + shareUrl;
 
+        // 检测重定向
+        QNetworkAccessManager* manager = new QNetworkAccessManager;
+        QNetworkRequest* request = new QNetworkRequest(QUrl(shareUrl));
+        request->setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded; charset=UTF-8");
+        request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
+        connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
+            return openPlayList(reply->rawHeader("Location"));
+        });
+        manager->get(*request);
+        return ;
+    }
+    else if (shareUrl.contains("y.qq.com/w/taoge.html")) // QQ音乐短网址第一次重定向
+    {
+        // https://y.qq.com/w/taoge.html?ADTAG=erweimashare&channelId=10036163&id=7845417918&openinqqmusic=1
+        source = QQMusic;
+        QRegularExpression re("[\\?&]id=(\\d+)");
+        QRegularExpressionMatch match;
+        if (shareUrl.indexOf(re, 0, &match) == -1)
+        {
+            qWarning() << "无法解析歌单链接：" << shareUrl;
+            return ;
+        }
+        id = match.captured(1);
+        playlistUrl = QQMUSIC_SERVER + "/getSongListDetail?disstid=" + id;
+    }
+    else if (shareUrl.contains("y.qq.com/n/yqq/playlist/")) // QQ音乐短网址第二次重定向（网页打开的）
+    {
+        // https://y.qq.com/n/yqq/playlist/7845417918.html
+        source = QQMusic;
+        QRegularExpression re("y.qq.com/n/yqq/playlist/(\\d+)");
+        QRegularExpressionMatch match;
+        if (shareUrl.indexOf(re, 0, &match) == -1)
+        {
+            qWarning() << "无法解析歌单链接：" << shareUrl;
+            return ;
+        }
+        id = match.captured(1);
+        playlistUrl = QQMUSIC_SERVER + "/getSongListDetail?disstid=" + id;
     }
     else
     {
-        qWarning() << "无法识别的歌单链接";
+        qWarning() << "无法解析歌单链接：" << shareUrl;
         return ;
     }
 
+    MUSIC_DEB << "歌单接口：" << playlistUrl;
     QNetworkAccessManager* manager = new QNetworkAccessManager;
     QNetworkRequest* request = new QNetworkRequest(playlistUrl);
     request->setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded; charset=UTF-8");
@@ -1462,18 +1507,18 @@ void OrderPlayerWindow::openPlayList(QString shareUrl)
         QJsonDocument document = QJsonDocument::fromJson(data, &error);
         if (error.error != QJsonParseError::NoError)
         {
-            qDebug() << error.errorString();
+            qDebug() << "解析歌单结果出错" << error.errorString();
             return ;
         }
         QJsonObject json = document.object();
         QJsonObject response;
         SongList songs;
-        switch (musicSource) {
+        switch (source) {
         case NeteaseCloudMusic:
         {
             if (json.value("code").toInt() != 200)
             {
-                qDebug() << ("返回结果不为200：") << json.value("message").toString();
+                qDebug() << ("歌单返回结果不为200：") << json.value("message").toString();
                 return ;
             }
             QJsonArray array = json.value("playlist").toObject().value("tracks").toArray();
@@ -1487,18 +1532,19 @@ void OrderPlayerWindow::openPlayList(QString shareUrl)
         }
         case QQMusic:
         {
-            QJsonValue val = json.value("response");
-            if (!val.isObject()) // 不是正常搜索结果对象
-            {
-                qDebug() << val;
-                return ;
-            }
-            response = val.toObject();
+            response = json.value("response").toObject();
             if (response.value("code").toInt() != 0)
             {
                 qDebug() << ("返回结果不为0：") << json.value("message").toString();
                 return ;
             }
+            QJsonArray array = response.value("cdlist").toArray().first().toObject().value("songlist").toArray();
+            searchResultSongs.clear();
+            foreach (QJsonValue val, array)
+            {
+                searchResultSongs << Song::fromQQMusicJson(val.toObject());
+            }
+            setSearchResultTable(searchResultSongs);
             break;
         }
         }
@@ -1687,7 +1733,7 @@ void OrderPlayerWindow::setThemeColor(const QPixmap &cover)
     FacileMenu::press_bg = sfg;
     FacileMenu::text_fg = fg;
 
-    qDebug() << "当前颜色：" << bg << fg << sfg;
+    MUSIC_DEB << "当前颜色：" << bg << fg << sfg;
 }
 
 /**
@@ -1749,11 +1795,11 @@ void OrderPlayerWindow::setMusicIconBySource()
     switch (musicSource) {
     case NeteaseCloudMusic:
         ui->musicSourceButton->setIcon(QIcon(":/musics/netease"));
-        ui->musicSourceButton->setToolTip("网易云音源");
+        ui->musicSourceButton->setToolTip("当前播放源：网易云音乐\n点击切换");
         break;
     case QQMusic:
         ui->musicSourceButton->setIcon(QIcon(":/musics/qq"));
-        ui->musicSourceButton->setToolTip("QQ音源");
+        ui->musicSourceButton->setToolTip("当前播放源：QQ音乐\n点击切换");
         break;
     }
 }

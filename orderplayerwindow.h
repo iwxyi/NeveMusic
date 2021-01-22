@@ -46,7 +46,7 @@ QT_END_NAMESPACE
 #define NETEASE_SERVER QString("http://iwxyi.com:3000")
 #define QQMUSIC_SERVER QString("http://iwxyi.com:3200")
 
-#define MUSIC_DEB if (1) qDebug()
+#define MUSIC_DEB if (0) qDebug()
 
 enum MusicQuality
 {
