@@ -242,6 +242,8 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
         ui->desktopLyricButton->setIcon(QIcon(":/icons/lyric_hide"));
     }
 
+    autoSwitchSource = settings.value("music/autoSwitchSource", true).toBool();
+
     // 还原上次播放的歌曲
     Song currentSong = Song::fromJson(settings.value("music/currentSong").toJsonObject());
     if (currentSong.isValid())
@@ -323,19 +325,19 @@ void OrderPlayerWindow::on_searchButton_clicked()
 void OrderPlayerWindow::slotSearchAndAutoAppend(QString key, QString by)
 {
     ui->searchEdit->setText(key);
-    orderBys.append(by);
-    searchMusic(key);
+    searchMusic(key, by);
 }
 
 /**
  * 搜索音乐
  */
-void OrderPlayerWindow::searchMusic(QString key)
+void OrderPlayerWindow::searchMusic(QString key, QString addBy)
 {
     if (key.trimmed().isEmpty())
         return ;
+    MusicSource source = musicSource; // 需要暂存一个备份，因为可能会变回去
     QString url;
-    switch (musicSource) {
+    switch (source) {
     case NeteaseCloudMusic:
         url = NETEASE_SERVER + "/search?keywords=" + key.toUtf8().toPercentEncoding() + "&limit=80";
         break;
@@ -351,6 +353,11 @@ void OrderPlayerWindow::searchMusic(QString key)
         QByteArray data = reply->readAll();
         manager->deleteLater();
         delete request;
+
+        bool insertOnce = this->insertOrderOnce;
+        this->insertOrderOnce = false;
+        currentResultOrderBy = addBy;
+
         QJsonParseError error;
         QJsonDocument document = QJsonDocument::fromJson(data, &error);
         if (error.error != QJsonParseError::NoError)
@@ -360,7 +367,7 @@ void OrderPlayerWindow::searchMusic(QString key)
         }
         QJsonObject json = document.object();
         QJsonObject response;
-        switch (musicSource) {
+        switch (source) {
         case NeteaseCloudMusic:
             if (json.value("code").toInt() != 200)
             {
@@ -385,7 +392,7 @@ void OrderPlayerWindow::searchMusic(QString key)
         }
 
         QJsonArray songs;
-        switch (musicSource) {
+        switch (source) {
         case NeteaseCloudMusic:
             songs = json.value("result").toObject().value("songs").toArray();
             break;
@@ -394,31 +401,35 @@ void OrderPlayerWindow::searchMusic(QString key)
             break;
         }
         searchResultSongs.clear();
-        foreach (QJsonValue val, songs)
-        {
-            switch (musicSource) {
-            case NeteaseCloudMusic:
+        switch (source) {
+        case NeteaseCloudMusic:
+            foreach (QJsonValue val, songs)
                 searchResultSongs << Song::fromJson(val.toObject());
-                break;
-            case QQMusic:
+            break;
+        case QQMusic:
+            foreach (QJsonValue val, songs)
                 searchResultSongs << Song::fromQQMusicJson(val.toObject());
-                break;
-            }
+            break;
         }
 
         setSearchResultTable(searchResultSongs);
 
         // 从点歌的槽进来的
-        if (orderBys.size())
+        if (!addBy.isEmpty())
         {
-            QString by = orderBys.takeFirst();
+            QString by = addBy;
             Song song = searchResultSongs.first();
             song.setAddDesc(by);
 
             // 添加到点歌列表
             if (searchResultSongs.size()) // 有搜索结果
             {
-                appendOrderSongs(SongList{song});
+                if (playingSong == song || orderSongs.contains(song)) // 重复点歌
+                    return ;
+                if (insertOnce)
+                    appendNextSongs(SongList{song});
+                else
+                    appendOrderSongs(SongList{song});
 
                 // 发送点歌成功的信号
                 qint64 sumLatency = isNotPlaying() ? 0 : player->duration() - player->position();
@@ -434,6 +445,14 @@ void OrderPlayerWindow::searchMusic(QString key)
         }
     });
     manager->get(*request);
+}
+
+void OrderPlayerWindow::searchMusicBySource(QString key, MusicSource source, QString addBy)
+{
+    MusicSource originSource = musicSource;
+    musicSource = source;
+    searchMusic(key, addBy);
+    musicSource = originSource;
 }
 
 /**
@@ -820,6 +839,13 @@ void OrderPlayerWindow::on_searchResultTable_customContextMenuRequested(const QP
             currentSong = searchResultSongs.at(row);
 
         FacileMenu* menu = new FacileMenu(this);
+
+        if (!currentResultOrderBy.isEmpty())
+        {
+            menu->addAction(currentResultOrderBy);
+            menu->split();
+        }
+
         menu->addAction("立即播放", [=]{
             startPlaySong(currentSong);
         })->disable(songs.size() != 1);
@@ -1154,7 +1180,18 @@ void OrderPlayerWindow::downloadSong(Song song)
                     {
                         orderSongs.removeOne(song);
                     }
-                    playNext();
+                    if (autoSwitchSource && song.source == musicSource
+                            && !song.addBy.isEmpty()) // 只有点歌才自动换源，普通播放自动跳过
+                    {
+                        qDebug() << "无法播放：" << song.name << "，开始换源";
+                        insertOrderOnce = true;
+                        searchMusicBySource(song.name, musicSource == NeteaseCloudMusic
+                                            ? QQMusic : NeteaseCloudMusic, song.addBy);
+                    }
+                    else
+                    {
+                        playNext();
+                    }
                 }
 
                 downloadingSong = Song();
@@ -2152,6 +2189,13 @@ void OrderPlayerWindow::on_normalSongsListView_customContextMenuRequested(const 
         setSongModelToView(normalSongs, ui->normalSongsListView);
     })->disable(songs.size() != 1 || row >= normalSongs.size()-1);
 
+    menu->addAction("打开分享的歌单", [=]{
+        QString url = QInputDialog::getText(this, "查看歌单", "支持网易云音乐、QQ音乐的分享链接");
+        if (url.isEmpty())
+            return ;
+        openPlayList(url);
+    });
+
     menu->split()->addAction("移出固定播放", [=]{
         removeNormal(songs);
     })->disable(!songs.size());
@@ -2416,6 +2460,10 @@ void OrderPlayerWindow::on_settingsButton_clicked()
             setThemeColor(currentCover);
         update();
     })->setChecked(themeColor);
+
+    menu->split()->addAction("自动换源", [=]{
+        settings.setValue("music/autoSwitchSource", autoSwitchSource = !autoSwitchSource);
+    })->setChecked(autoSwitchSource);
 
     menu->exec();
 }
