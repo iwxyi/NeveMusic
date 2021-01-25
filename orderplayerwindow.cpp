@@ -247,8 +247,9 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
 
     // 读取cookie
     neteaseCookies = settings.value("music/neteaseCookies").toString();
-    neteaseCookieVariant = getCookies(neteaseCookies);
+    neteaseCookiesVariant = getCookies(neteaseCookies);
     qqmusicCookies = settings.value("music/qqmusicCookies").toString();
+    qqmusicCookiesVariant = getCookies(qqmusicCookies);
 
     // 还原上次播放的歌曲
     Song currentSong = Song::fromJson(settings.value("music/currentSong").toJsonObject());
@@ -1970,7 +1971,7 @@ void OrderPlayerWindow::fetch(QString url, NetReplyFunc func)
     request->setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded; charset=UTF-8");
     request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
     if (!neteaseCookies.isEmpty() && url.startsWith(NETEASE_SERVER))
-        request->setHeader(QNetworkRequest::CookieHeader, neteaseCookieVariant);
+        request->setHeader(QNetworkRequest::CookieHeader, neteaseCookiesVariant);
     else if (!qqmusicCookies.isEmpty() && url.startsWith(QQMUSIC_SERVER))
         ; // 暂时不支持QQ音乐的登录
     connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
@@ -2619,16 +2620,17 @@ void OrderPlayerWindow::on_settingsButton_clicked()
             case NeteaseCloudMusic:
                 neteaseCookies = cookies;
                 settings.setValue("music/neteaseCookies", cookies);
-                neteaseCookieVariant = getCookies(neteaseCookies);
+                neteaseCookiesVariant = getCookies(neteaseCookies);
                 break;
             case QQMusic:
                 qqmusicCookies = cookies;
                 settings.setValue("music/qqmusicCookies", cookies);
+                qqmusicCookiesVariant = getCookies(qqmusicCookies);
                 break;
             }
         });
         dialog->exec();
-    });
+    })->check(!neteaseCookies.isEmpty() || !qqmusicCookies.isEmpty());
 
     menu->exec();
 }

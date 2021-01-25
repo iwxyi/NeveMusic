@@ -23,9 +23,15 @@ public:
 private slots:
     void on_loginButton_clicked();
 
+    void on_neteaseRadio_clicked();
+
+    void on_qqmusicRadio_clicked();
+
+    void on_cookieHelpButton_clicked();
+
 private:
     void loginNetease(QString username, QString password);
-    void loginQQMusic(QString username, QString password);
+    void loginQQMusic(QString cookies);
 
 signals:
     void signalLogined(MusicSource source, QString cookies);

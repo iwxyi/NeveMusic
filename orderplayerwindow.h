@@ -331,8 +331,9 @@ private:
     bool insertOrderOnce = false; // 插入到前面
 
     QString neteaseCookies;
-    QVariant neteaseCookieVariant;
+    QVariant neteaseCookiesVariant;
     QString qqmusicCookies;
+    QVariant qqmusicCookiesVariant;
 };
 
 class NoFocusDelegate : public QStyledItemDelegate
