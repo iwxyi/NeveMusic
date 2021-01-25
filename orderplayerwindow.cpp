@@ -2594,8 +2594,8 @@ void OrderPlayerWindow::on_settingsButton_clicked()
     })->setChecked(blurBg);
 
     QStringList sl{"32", "64", "96", "128"/*, "160", "192", "224", "256"*/};
-    auto blurAlphaMenu = menu->addMenu("模糊透明度");
-    menu->lastAction()->hide(!blurBg);
+    auto blurAlphaMenu = menu->addMenu("模糊透明");
+    menu->lastAction()->hide(!blurBg)->uncheck();
     blurAlphaMenu->addOptions(sl, blurAlpha / 32 - 1, [=](int index){
         blurAlpha = (index+1) * 32;
         settings.setValue("music/blurAlpha", blurAlpha);
