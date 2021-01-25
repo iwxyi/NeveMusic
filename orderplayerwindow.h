@@ -250,9 +250,9 @@ private:
 
     void setMusicIconBySource();
 
-    void net(QString url, NetStringFunc func);
-    void net(QString url, NetJsonFunc func);
-    void net(QString url, NetReplyFunc func);
+    void fetch(QString url, NetStringFunc func);
+    void fetch(QString url, NetJsonFunc func);
+    void fetch(QString url, NetReplyFunc func);
 
 protected:
     void showEvent(QShowEvent*e) override;

@@ -8,9 +8,6 @@ LoginDialog::LoginDialog(QWidget *parent) :
     ui->setupUi(this);
     setAttribute(Qt::WA_DeleteOnClose, true);
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
-
-    NetworkCookieJar jar;
-    qDebug() << jar.getCookies();
 }
 
 LoginDialog::~LoginDialog()

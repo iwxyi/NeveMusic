@@ -346,28 +346,12 @@ void OrderPlayerWindow::searchMusic(QString key, QString addBy, bool notify)
         url = QQMUSIC_SERVER + "/getSearchByKey?key=" + key.toUtf8().toPercentEncoding() + "&limit=80";
         break;
     }
-    QNetworkAccessManager* manager = new QNetworkAccessManager;
-    QNetworkRequest* request = new QNetworkRequest(url);
-    request->setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded; charset=UTF-8");
-    request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
-    connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
-        QByteArray data = reply->readAll();
-        manager->deleteLater();
-        delete request;
-
+    fetch(url, [=](QJsonObject json){
         bool insertOnce = this->insertOrderOnce;
         this->insertOrderOnce = false;
         currentResultOrderBy = addBy;
         prevOrderSong = Song();
 
-        QJsonParseError error;
-        QJsonDocument document = QJsonDocument::fromJson(data, &error);
-        if (error.error != QJsonParseError::NoError)
-        {
-            qDebug() << error.errorString();
-            return ;
-        }
-        QJsonObject json = document.object();
         QJsonObject response;
         switch (source) {
         case NeteaseCloudMusic:
@@ -463,7 +447,6 @@ void OrderPlayerWindow::searchMusic(QString key, QString addBy, bool notify)
                 appendNextSongs(SongList{song});
         }
     });
-    manager->get(*request);
 }
 
 void OrderPlayerWindow::searchMusicBySource(QString key, MusicSource source, QString addBy)
@@ -1260,14 +1243,8 @@ void OrderPlayerWindow::downloadSong(Song song)
     }
 
     MUSIC_DEB << "获取歌曲信息：" << song.simpleString() << url;
-    QNetworkAccessManager* manager = new QNetworkAccessManager;
-    QNetworkRequest* request = new QNetworkRequest(url);
-    request->setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded; charset=UTF-8");
-    request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
-    connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
+    fetch(url, [=](QNetworkReply* reply){
         QByteArray baData = reply->readAll();
-        manager->deleteLater();
-        delete request;
 
         if (song.source == QQMusic)
         {
@@ -1438,7 +1415,6 @@ void OrderPlayerWindow::downloadSong(Song song)
         downloadingSong = Song();
         downloadNext();
     });
-    manager->get(*request);
 
     downloadSongLyric(song);
     downloadSongCover(song);
@@ -1461,23 +1437,7 @@ void OrderPlayerWindow::downloadSongLyric(Song song)
         break;
     }
 
-    QNetworkAccessManager* manager = new QNetworkAccessManager;
-    QNetworkRequest* request = new QNetworkRequest(url);
-    request->setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded; charset=UTF-8");
-    request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
-    connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
-        QByteArray baData = reply->readAll();
-        manager->deleteLater();
-        delete request;
-        QJsonParseError error;
-        QJsonDocument document = QJsonDocument::fromJson(baData, &error);
-        if (error.error != QJsonParseError::NoError)
-        {
-            qDebug() << error.errorString();
-            return ;
-        }
-        QJsonObject json = document.object();
-
+    fetch(url, [=](QJsonObject json){
         QString lrc;
         switch (song.source) {
         case NeteaseCloudMusic:
@@ -1514,7 +1474,6 @@ void OrderPlayerWindow::downloadSongLyric(Song song)
             qWarning() << "warning: 下载的歌词是空的" << song.simpleString() << url;
         }
     });
-    manager->get(*request);
 }
 
 void OrderPlayerWindow::downloadSongCover(Song song)
@@ -1534,23 +1493,7 @@ void OrderPlayerWindow::downloadSongCover(Song song)
     }
 
     MUSIC_DEB << "封面信息url:" << url;
-    QNetworkAccessManager* manager = new QNetworkAccessManager;
-    QNetworkRequest* request = new QNetworkRequest(url);
-    request->setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded; charset=UTF-8");
-    request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
-    connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
-        QByteArray baData = reply->readAll();
-        manager->deleteLater();
-        delete request;
-        QJsonParseError error;
-        QJsonDocument document = QJsonDocument::fromJson(baData, &error);
-        if (error.error != QJsonParseError::NoError)
-        {
-            qDebug() << error.errorString();
-            return ;
-        }
-        QJsonObject json = document.object();
-
+    fetch(url, [=](QJsonObject json){
         QString url;
         switch (song.source) {
         case NeteaseCloudMusic:
@@ -1621,7 +1564,6 @@ void OrderPlayerWindow::downloadSongCover(Song song)
             qDebug() << "warning: 下载的封面是空的" << song.simpleString();
         }
     });
-    manager->get(*request);
 }
 
 /**
@@ -1659,17 +1601,10 @@ void OrderPlayerWindow::openPlayList(QString shareUrl)
             shareUrl = "https://" + shareUrl;
 
         // 检测重定向
-        QNetworkAccessManager* manager = new QNetworkAccessManager;
-        QNetworkRequest* request = new QNetworkRequest(QUrl(shareUrl));
-        request->setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded; charset=UTF-8");
-        request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
-        connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
+        fetch(shareUrl, [=](QNetworkReply* reply){
             QString url = reply->rawHeader("Location");
-            manager->deleteLater();
-            delete request;
             return openPlayList(url);
         });
-        manager->get(*request);
         return ;
     }
     else if (shareUrl.contains("y.qq.com/w/taoge.html")) // QQ音乐短网址第一次重定向
@@ -1707,22 +1642,7 @@ void OrderPlayerWindow::openPlayList(QString shareUrl)
     }
 
     MUSIC_DEB << "歌单接口：" << playlistUrl;
-    QNetworkAccessManager* manager = new QNetworkAccessManager;
-    QNetworkRequest* request = new QNetworkRequest(playlistUrl);
-    request->setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded; charset=UTF-8");
-    request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
-    connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
-        QByteArray data = reply->readAll();
-        manager->deleteLater();
-        delete request;
-        QJsonParseError error;
-        QJsonDocument document = QJsonDocument::fromJson(data, &error);
-        if (error.error != QJsonParseError::NoError)
-        {
-            qDebug() << "解析歌单结果出错" << error.errorString();
-            return ;
-        }
-        QJsonObject json = document.object();
+    fetch(playlistUrl, [=](QJsonObject json){
         QJsonObject response;
         SongList songs;
         switch (source) {
@@ -1763,7 +1683,6 @@ void OrderPlayerWindow::openPlayList(QString shareUrl)
         }
         }
     });
-    manager->get(*request);
 
 }
 
@@ -2018,32 +1937,28 @@ void OrderPlayerWindow::setMusicIconBySource()
     }
 }
 
-void OrderPlayerWindow::net(QString url, NetStringFunc func)
+void OrderPlayerWindow::fetch(QString url, NetStringFunc func)
 {
     QNetworkAccessManager* manager = new QNetworkAccessManager;
     QNetworkRequest* request = new QNetworkRequest(url);
     request->setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded; charset=UTF-8");
     request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
     connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
-        manager->deleteLater();
-        delete request;
-
         func(reply->readAll());
         reply->deleteLater();
+        manager->deleteLater();
+        delete request;
     });
     manager->get(*request);
 }
 
-void OrderPlayerWindow::net(QString url, NetJsonFunc func)
+void OrderPlayerWindow::fetch(QString url, NetJsonFunc func)
 {
     QNetworkAccessManager* manager = new QNetworkAccessManager;
     QNetworkRequest* request = new QNetworkRequest(url);
     request->setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded; charset=UTF-8");
     request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
     connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
-        manager->deleteLater();
-        delete request;
-
         QJsonParseError error;
         QJsonDocument document = QJsonDocument::fromJson(reply->readAll(), &error);
         if (error.error != QJsonParseError::NoError)
@@ -2053,12 +1968,14 @@ void OrderPlayerWindow::net(QString url, NetJsonFunc func)
         }
         func(document.object());
 
+        manager->deleteLater();
+        delete request;
         reply->deleteLater();
     });
     manager->get(*request);
 }
 
-void OrderPlayerWindow::net(QString url, NetReplyFunc func)
+void OrderPlayerWindow::fetch(QString url, NetReplyFunc func)
 {
     QNetworkAccessManager* manager = new QNetworkAccessManager;
     QNetworkRequest* request = new QNetworkRequest(url);
