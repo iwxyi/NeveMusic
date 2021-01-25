@@ -44,7 +44,7 @@ QT_END_NAMESPACE
 #define LISTTAB_PLAYLIST 3
 #define LISTTAB_HISTORY 3
 
-#define MUSIC_DEB if (1) qDebug()
+#define MUSIC_DEB if (0) qDebug()
 
 typedef std::function<void(QString)> const NetStringFunc;
 typedef std::function<void(QJsonObject)> const NetJsonFunc;
@@ -253,6 +253,7 @@ private:
     void fetch(QString url, NetStringFunc func);
     void fetch(QString url, NetJsonFunc func);
     void fetch(QString url, NetReplyFunc func);
+    QVariant getCookies(QString cookieString);
 
 protected:
     void showEvent(QShowEvent*e) override;
@@ -330,6 +331,7 @@ private:
     bool insertOrderOnce = false; // 插入到前面
 
     QString neteaseCookies;
+    QVariant neteaseCookieVariant;
     QString qqmusicCookies;
 };
 

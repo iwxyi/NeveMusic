@@ -245,6 +245,11 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
 
     autoSwitchSource = settings.value("music/autoSwitchSource", true).toBool();
 
+    // 读取cookie
+    neteaseCookies = settings.value("music/neteaseCookies").toString();
+    neteaseCookieVariant = getCookies(neteaseCookies);
+    qqmusicCookies = settings.value("music/qqmusicCookies").toString();
+
     // 还原上次播放的歌曲
     Song currentSong = Song::fromJson(settings.value("music/currentSong").toJsonObject());
     if (currentSong.isValid())
@@ -1939,26 +1944,14 @@ void OrderPlayerWindow::setMusicIconBySource()
 
 void OrderPlayerWindow::fetch(QString url, NetStringFunc func)
 {
-    QNetworkAccessManager* manager = new QNetworkAccessManager;
-    QNetworkRequest* request = new QNetworkRequest(url);
-    request->setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded; charset=UTF-8");
-    request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
-    connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
+    fetch(url, [=](QNetworkReply* reply){
         func(reply->readAll());
-        reply->deleteLater();
-        manager->deleteLater();
-        delete request;
     });
-    manager->get(*request);
 }
 
 void OrderPlayerWindow::fetch(QString url, NetJsonFunc func)
 {
-    QNetworkAccessManager* manager = new QNetworkAccessManager;
-    QNetworkRequest* request = new QNetworkRequest(url);
-    request->setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded; charset=UTF-8");
-    request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
-    connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
+    fetch(url, [=](QNetworkReply* reply){
         QJsonParseError error;
         QJsonDocument document = QJsonDocument::fromJson(reply->readAll(), &error);
         if (error.error != QJsonParseError::NoError)
@@ -1967,12 +1960,7 @@ void OrderPlayerWindow::fetch(QString url, NetJsonFunc func)
             return ;
         }
         func(document.object());
-
-        manager->deleteLater();
-        delete request;
-        reply->deleteLater();
     });
-    manager->get(*request);
 }
 
 void OrderPlayerWindow::fetch(QString url, NetReplyFunc func)
@@ -1981,6 +1969,10 @@ void OrderPlayerWindow::fetch(QString url, NetReplyFunc func)
     QNetworkRequest* request = new QNetworkRequest(url);
     request->setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded; charset=UTF-8");
     request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
+    if (!neteaseCookies.isEmpty() && url.startsWith(NETEASE_SERVER))
+        request->setHeader(QNetworkRequest::CookieHeader, neteaseCookieVariant);
+    else if (!qqmusicCookies.isEmpty() && url.startsWith(QQMUSIC_SERVER))
+        ; // 暂时不支持QQ音乐的登录
     connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
         manager->deleteLater();
         delete request;
@@ -1989,6 +1981,28 @@ void OrderPlayerWindow::fetch(QString url, NetReplyFunc func)
         reply->deleteLater();
     });
     manager->get(*request);
+}
+
+QVariant OrderPlayerWindow::getCookies(QString cookieString)
+{
+    QList<QNetworkCookie> cookies;
+
+    // 设置cookie
+    QString cookieText = cookieString;
+    QStringList sl = cookieText.split(";");
+    foreach (auto s, sl)
+    {
+        s = s.trimmed();
+        int pos = s.indexOf("=");
+        QString key = s.left(pos);
+        QString val = s.right(s.length() - pos - 1);
+        cookies.push_back(QNetworkCookie(key.toUtf8(), val.toUtf8()));
+    }
+
+    // 请求头里面加入cookies
+    QVariant var;
+    var.setValue(cookies);
+    return var;
 }
 
 /**
@@ -2605,6 +2619,7 @@ void OrderPlayerWindow::on_settingsButton_clicked()
             case NeteaseCloudMusic:
                 neteaseCookies = cookies;
                 settings.setValue("music/neteaseCookies", cookies);
+                neteaseCookieVariant = getCookies(neteaseCookies);
                 break;
             case QQMusic:
                 qqmusicCookies = cookies;
