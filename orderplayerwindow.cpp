@@ -20,12 +20,13 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     header->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     header->setStyleSheet("QHeaderView { background-color: transparent; }");
     ui->searchResultTable->verticalHeader()->setStyleSheet("QHeaderView { background-color: transparent; }");
-    ui->searchResultTable->setItemDelegate(new NoFocusDelegate());
-    ui->orderSongsListView->setItemDelegate(new NoFocusDelegate());
-    ui->normalSongsListView->setItemDelegate(new NoFocusDelegate());
-    ui->favoriteSongsListView->setItemDelegate(new NoFocusDelegate());
-    ui->listSongsListView->setItemDelegate(new NoFocusDelegate());
-    ui->historySongsListView->setItemDelegate(new NoFocusDelegate());
+
+    new NoFocusDelegate(ui->searchResultTable, 4);
+    new NoFocusDelegate(ui->orderSongsListView);
+    new NoFocusDelegate(ui->normalSongsListView);
+    new NoFocusDelegate(ui->favoriteSongsListView);
+    new NoFocusDelegate(ui->listSongsListView);
+    new NoFocusDelegate(ui->historySongsListView);
 
     QString vScrollBarSS("QScrollBar:vertical"
                          "{"
@@ -325,13 +326,13 @@ void OrderPlayerWindow::on_searchButton_clicked()
 void OrderPlayerWindow::slotSearchAndAutoAppend(QString key, QString by)
 {
     ui->searchEdit->setText(key);
-    searchMusic(key, by);
+    searchMusic(key, by, true);
 }
 
 /**
  * 搜索音乐
  */
-void OrderPlayerWindow::searchMusic(QString key, QString addBy)
+void OrderPlayerWindow::searchMusic(QString key, QString addBy, bool notify)
 {
     if (key.trimmed().isEmpty())
         return ;
@@ -357,6 +358,7 @@ void OrderPlayerWindow::searchMusic(QString key, QString addBy)
         bool insertOnce = this->insertOrderOnce;
         this->insertOrderOnce = false;
         currentResultOrderBy = addBy;
+        prevOrderSong = Song();
 
         QJsonParseError error;
         QJsonDocument document = QJsonDocument::fromJson(data, &error);
@@ -414,24 +416,34 @@ void OrderPlayerWindow::searchMusic(QString key, QString addBy)
 
         setSearchResultTable(searchResultSongs);
 
+        // 没有搜索结果
+        if (!searchResultSongs.size())
+            return ;
+
         // 从点歌的槽进来的
         if (!addBy.isEmpty())
         {
-            QString by = addBy;
-            Song song = searchResultSongs.first();
-            song.setAddDesc(by);
+            Song song = getSuiableSong(key);
+            song.setAddDesc(addBy);
+            prevOrderSong = song;
 
             // 添加到点歌列表
-            if (searchResultSongs.size()) // 有搜索结果
-            {
-                if (playingSong == song || orderSongs.contains(song)) // 重复点歌
-                    return ;
-                if (insertOnce)
-                    appendNextSongs(SongList{song});
-                else
-                    appendOrderSongs(SongList{song});
+            if (playingSong == song || orderSongs.contains(song)) // 重复点歌
+                return ;
 
-                // 发送点歌成功的信号
+            if (insertOnce) // 可能是换源过来的
+            {
+                if (isNotPlaying()) // 很可能是换源过来的
+                    startPlaySong(song);
+                else
+                    appendNextSongs(SongList{song});
+            }
+            else
+                appendOrderSongs(SongList{song});
+
+            // 发送点歌成功的信号
+            if (notify)
+            {
                 qint64 sumLatency = isNotPlaying() ? 0 : player->duration() - player->position();
                 for (int i = 0; i < orderSongs.size()-1; i++)
                 {
@@ -441,7 +453,14 @@ void OrderPlayerWindow::searchMusic(QString key, QString addBy)
                 }
                 emit signalOrderSongSucceed(song, sumLatency, orderSongs.size());
             }
-
+        }
+        else if (insertOnce) // 强制播放啊
+        {
+            Song song = getSuiableSong(key);
+            if (isNotPlaying()) // 很可能是换源过来的
+                startPlaySong(song);
+            else
+                appendNextSongs(SongList{song});
         }
     });
     manager->get(*request);
@@ -677,6 +696,102 @@ bool OrderPlayerWindow::isNotPlaying() const
             && (!playingSong.isValid() || player->position() == 0);
 }
 
+/**
+ * 从结果中获取最适合的歌曲
+ * 优先：歌名-歌手
+ * 其次：歌名 歌手
+ * 默认：搜索结果第一首歌
+ */
+Song OrderPlayerWindow::getSuiableSong(QString key) const
+{
+    Q_ASSERT(searchResultSongs.size());
+    key = key.trimmed();
+
+    // 歌名 - 歌手
+    if (key.indexOf("-"))
+    {
+        QRegularExpression re("^\\s*(.+?)\\s*-\\s*(.+?)\\s*$");
+        QRegularExpressionMatch match;
+        if (key.indexOf(re, 0, &match) > -1)
+        {
+            QString name = match.captured(1);   // 歌名
+            QString author = match.captured(2); // 歌手
+
+            // 歌名、歌手全匹配
+            foreach (Song song, searchResultSongs)
+            {
+                if (song.name == name && song.artistNames == author)
+                    return song;
+            }
+
+            // 歌名全匹配、歌手包含
+            foreach (Song song, searchResultSongs)
+            {
+                if (song.name == name && song.artistNames.contains(author))
+                    return song;
+            }
+
+            // 歌名包含、歌手全匹配
+            foreach (Song song, searchResultSongs)
+            {
+                if (song.name.contains(name) && song.artistNames == author)
+                    return song;
+            }
+
+            // 歌名包含、歌手包含
+            foreach (Song song, searchResultSongs)
+            {
+                if (song.name.contains(name) && song.artistNames.contains(author))
+                    return song;
+            }
+        }
+    }
+
+    // 歌 名 歌 手
+    if (key.contains(" "))
+    {
+        int pos = key.lastIndexOf(" ");
+        while (pos > -1)
+        {
+            QString name = key.left(pos).trimmed();
+            QString author = key.right(key.length() - pos - 1).trimmed();
+
+            // 歌名、歌手全匹配
+            foreach (Song song, searchResultSongs)
+            {
+                if (song.name == name && song.artistNames == author)
+                    return song;
+            }
+
+            // 歌名全匹配、歌手包含
+            foreach (Song song, searchResultSongs)
+            {
+                if (song.name == name && song.artistNames.contains(author))
+                    return song;
+            }
+
+            // 歌名包含(cover)、歌手全匹配
+            foreach (Song song, searchResultSongs)
+            {
+                if (song.name.contains(name) && song.artistNames == author)
+                    return song;
+            }
+
+            // 歌名包含、歌手包含
+            foreach (Song song, searchResultSongs)
+            {
+                if (song.name.contains(name) && song.artistNames.contains(author))
+                    return song;
+            }
+
+            pos = key.lastIndexOf(" ", pos-1);
+        }
+    }
+
+    // 没指定歌手，随便来一个就行
+    return searchResultSongs.first();
+}
+
 void OrderPlayerWindow::showEvent(QShowEvent *e)
 {
     QMainWindow::showEvent(e);
@@ -842,7 +957,33 @@ void OrderPlayerWindow::on_searchResultTable_customContextMenuRequested(const QP
 
         if (!currentResultOrderBy.isEmpty())
         {
-            menu->addAction(currentResultOrderBy);
+            currentSong.setAddDesc(currentResultOrderBy);
+            menu->addAction(currentResultOrderBy)->disable();
+            menu->addAction("换这首歌", [=]{
+                int index = orderSongs.indexOf(prevOrderSong);
+                if (index == -1)
+                {
+                    if (playingSong == prevOrderSong) // 正在播放
+                    {
+                        startPlaySong(currentSong);
+                        prevOrderSong = currentSong;
+                        return ;
+                    }
+                    else // 可能被手动删除了
+                    {
+                        orderSongs.insert(0, currentSong);
+                    }
+                }
+                else // 等待播放，自动替换
+                {
+                    orderSongs[index] = currentSong;
+                }
+                prevOrderSong = currentSong;
+                saveSongList("music/order", orderSongs);
+                setSongModelToView(orderSongs, ui->orderSongsListView);
+                addDownloadSong(currentSong);
+                downloadNext();
+            })->disable(!currentSong.isValid() || !prevOrderSong.isValid());
             menu->split();
         }
 
@@ -1179,10 +1320,13 @@ void OrderPlayerWindow::downloadSong(Song song)
                     if (orderSongs.contains(song))
                     {
                         orderSongs.removeOne(song);
+                        saveSongList("music/order", orderSongs);
+                        setSongModelToView(orderSongs, ui->orderSongsListView);
                     }
                     if (autoSwitchSource && song.source == musicSource
-                            && !song.addBy.isEmpty()) // 只有点歌才自动换源，普通播放自动跳过
+                            /*&& !song.addBy.isEmpty()*/) // 只有点歌才自动换源，普通播放自动跳过
                     {
+                        slotSongPlayEnd(); // 先停止播放，然后才会开始播放新的；否则会插入到下一首
                         qDebug() << "无法播放：" << song.name << "，开始换源";
                         insertOrderOnce = true;
                         searchMusicBySource(song.name, musicSource == NeteaseCloudMusic
@@ -1874,6 +2018,62 @@ void OrderPlayerWindow::setMusicIconBySource()
     }
 }
 
+void OrderPlayerWindow::net(QString url, NetStringFunc func)
+{
+    QNetworkAccessManager* manager = new QNetworkAccessManager;
+    QNetworkRequest* request = new QNetworkRequest(url);
+    request->setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded; charset=UTF-8");
+    request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
+    connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
+        manager->deleteLater();
+        delete request;
+
+        func(reply->readAll());
+        reply->deleteLater();
+    });
+    manager->get(*request);
+}
+
+void OrderPlayerWindow::net(QString url, NetJsonFunc func)
+{
+    QNetworkAccessManager* manager = new QNetworkAccessManager;
+    QNetworkRequest* request = new QNetworkRequest(url);
+    request->setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded; charset=UTF-8");
+    request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
+    connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
+        manager->deleteLater();
+        delete request;
+
+        QJsonParseError error;
+        QJsonDocument document = QJsonDocument::fromJson(reply->readAll(), &error);
+        if (error.error != QJsonParseError::NoError)
+        {
+            qDebug() << error.errorString();
+            return ;
+        }
+        func(document.object());
+
+        reply->deleteLater();
+    });
+    manager->get(*request);
+}
+
+void OrderPlayerWindow::net(QString url, NetReplyFunc func)
+{
+    QNetworkAccessManager* manager = new QNetworkAccessManager;
+    QNetworkRequest* request = new QNetworkRequest(url);
+    request->setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded; charset=UTF-8");
+    request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
+    connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
+        manager->deleteLater();
+        delete request;
+
+        func(reply);
+        reply->deleteLater();
+    });
+    manager->get(*request);
+}
+
 /**
  * 列表项改变
  */
@@ -1989,11 +2189,13 @@ void OrderPlayerWindow::slotSongPlayEnd()
     if (circleMode == OrderList) // 列表顺序
     {
         // 清除播放
+        player->stop();
         playingSong = Song();
         settings.setValue("music/currentSong", "");
         ui->playingNameLabel->clear();
         ui->playingArtistLabel->clear();
         ui->playingCoverLabel->clear();
+        setCurrentLyric("");
 
         // 下一首歌，没有就不放
         playNext();
@@ -2018,6 +2220,13 @@ void OrderPlayerWindow::on_orderSongsListView_customContextMenuRequested(const Q
         currentSong = orderSongs.at(row);
 
     FacileMenu* menu = new FacileMenu(this);
+
+    if (!currentSong.addBy.isEmpty())
+    {
+        currentSong.setAddDesc(currentSong.addBy);
+        menu->addAction(currentSong.addBy)->disable();
+        menu->split();
+    }
 
     menu->addAction("立即播放", [=]{
         Song song = orderSongs.takeAt(row);
@@ -2215,6 +2424,13 @@ void OrderPlayerWindow::on_historySongsListView_customContextMenuRequested(const
         currentSong = historySongs.at(row);
 
     FacileMenu* menu = new FacileMenu(this);
+
+    if (!currentSong.addBy.isEmpty())
+    {
+        currentSong.setAddDesc(currentSong.addBy);
+        menu->addAction(currentSong.addBy)->disable();
+        menu->split();
+    }
 
     menu->addAction("立即播放", [=]{
         Song song = historySongs.takeAt(row);
@@ -2465,6 +2681,23 @@ void OrderPlayerWindow::on_settingsButton_clicked()
         settings.setValue("music/autoSwitchSource", autoSwitchSource = !autoSwitchSource);
     })->setChecked(autoSwitchSource);
 
+    menu->addAction("账号登录", [=]{
+        LoginDialog* dialog = new LoginDialog(this);
+        connect(dialog, &LoginDialog::signalLogined, this, [=](MusicSource source, QString cookies){
+            switch (source) {
+            case NeteaseCloudMusic:
+                neteaseCookies = cookies;
+                settings.setValue("music/neteaseCookies", cookies);
+                break;
+            case QQMusic:
+                qqmusicCookies = cookies;
+                settings.setValue("music/qqmusicCookies", cookies);
+                break;
+            }
+        });
+        dialog->exec();
+    });
+
     menu->exec();
 }
 
@@ -2475,13 +2708,22 @@ void OrderPlayerWindow::on_musicSourceButton_clicked()
 
     setMusicIconBySource();
 
-    if (!ui->searchEdit->text().isEmpty())
-        on_searchEdit_returnPressed();
+    QString text = ui->searchEdit->text();
+    if (!text.isEmpty())
+    {
+        searchMusic(text, currentResultOrderBy);
+        ui->bodyStackWidget->setCurrentWidget(ui->searchResultPage);
+    }
     else
-        ui->searchEdit->clear();
+    {
+        ui->searchResultTable->clear();
+    }
 }
 
 void OrderPlayerWindow::on_nextSongButton_clicked()
 {
-    playNext();
+    if (orderSongs.size())
+        playNext();
+    else
+        slotSongPlayEnd(); // 顺序停止播放；单曲重新播放
 }

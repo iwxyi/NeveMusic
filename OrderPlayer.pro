@@ -27,6 +27,7 @@ SOURCES += \
     facile_menu/facilemenu.cpp \
     facile_menu/facilemenuitem.cpp \
     interactive_buttons/interactivebuttonbase.cpp \
+    logindialog.cpp \
     main.cpp \
     numberanimation.cpp \
     orderplayerwindow.cpp
@@ -39,6 +40,8 @@ HEADERS += \
     facile_menu/facilemenu.h \
     facile_menu/facilemenuitem.h \
     interactive_buttons/interactivebuttonbase.h \
+    itemselectionlistview.h \
+    logindialog.h \
     lyricstreamwidget.h \
     numberanimation.h \
     orderplayerwindow.h \
@@ -46,6 +49,7 @@ HEADERS += \
     songbeans.h
 
 FORMS += \
+    logindialog.ui \
     orderplayerwindow.ui
 
 # Default rules for deployment.
