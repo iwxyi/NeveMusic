@@ -44,7 +44,7 @@ QT_END_NAMESPACE
 #define LISTTAB_PLAYLIST 3
 #define LISTTAB_HISTORY 3
 
-#define MUSIC_DEB if (0) qDebug()
+#define MUSIC_DEB if (1) qDebug()
 
 typedef std::function<void(QString)> const NetStringFunc;
 typedef std::function<void(QJsonObject)> const NetJsonFunc;
@@ -334,6 +334,7 @@ private:
     QVariant neteaseCookiesVariant;
     QString qqmusicCookies;
     QVariant qqmusicCookiesVariant;
+    bool unblockQQMusic = false;
 };
 
 class NoFocusDelegate : public QStyledItemDelegate

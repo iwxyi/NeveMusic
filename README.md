@@ -1,4 +1,4 @@
-点歌机
+一个没有名字的点歌机
 ===
 
 ——[神奇弹幕](https://github.com/iwxyi/Bilibili-MagicalDanmaku)点歌姬插件
@@ -29,15 +29,20 @@
 
 ### 截图
 
-![music1](screenshots/music1.png)
+![music2](README.assets/music2.png)
 
-![music2](screenshots/music2.png)
+![music1](screenshots/music1.png)
 
 ![music3](screenshots/music3.png)
 
 
 
 ## 特别鸣谢
+
+- 我自己：
+  - [InteractiveButtons](https://github.com/iwxyi/Qt-InteractiveButtons)
+  - [FacileMenu](https://github.com/iwxyi/Qt-FacileMenu)
+  - [ImageThemeExtraion](https://github.com/iwxyi/ImageThemeExtraction)
 
 - [Binaryify/NeteaseCloudMusicApi)](https://github.com/Binaryify/NeteaseCloudMusicApi)
 - [rain120/qq-music-api](https://github.com/rain120/qq-music-api)

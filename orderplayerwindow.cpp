@@ -250,6 +250,7 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     neteaseCookiesVariant = getCookies(neteaseCookies);
     qqmusicCookies = settings.value("music/qqmusicCookies").toString();
     qqmusicCookiesVariant = getCookies(qqmusicCookies);
+    unblockQQMusic = settings.value("music/unblockQQMusic").toBool();
 
     // 还原上次播放的歌曲
     Song currentSong = Song::fromJson(settings.value("music/currentSong").toJsonObject());
@@ -1238,13 +1239,18 @@ void OrderPlayerWindow::downloadSong(Song song)
     if (isSongDownloaded(song))
         return ;
     downloadingSong = song;
+    bool unblockQQMusic = this->unblockQQMusic; // 保存状态，避免下载的时候改变
+
     QString url;
     switch (song.source) {
     case NeteaseCloudMusic:
         url = NETEASE_SERVER + "/song/url?id=" + snum(song.id);
         break;
     case QQMusic:
-        url = "http://www.douqq.com/qqmusic/qqapi.php?mid=" + song.mid;
+        if (unblockQQMusic)
+            url = "http://www.douqq.com/qqmusic/qqapi.php?mid=" + song.mid;
+        else
+            url = url = QQMUSIC_SERVER + "/getMusicPlay?songmid=" + song.mid;
         break;
     }
 
@@ -1252,7 +1258,7 @@ void OrderPlayerWindow::downloadSong(Song song)
     fetch(url, [=](QNetworkReply* reply){
         QByteArray baData = reply->readAll();
 
-        if (song.source == QQMusic)
+        if (song.source == QQMusic && unblockQQMusic)
         {
             // 这个API是野生找的，需要额外处理
             baData.replace("\\\"", "\"").replace("\\\\", "\\").replace("\\/", "/");
@@ -1329,38 +1335,53 @@ void OrderPlayerWindow::downloadSong(Song song)
         }
         case QQMusic:
         {
-            /*{
-                "mid": "001fApzM4Rymgq",
-                "m4a": "http:\/\/aqqmusic.tc.qq.com\/amobile.music.tc.qq.com\/C400001fApzM4Rymgq.m4a?guid=2095717240&vkey=23EB99E476D5EB7936AF440461D097689A00AE211B2D1725B9703A9459A1239301BF19E0A098B30CC9F4503C8DBDA65FD85E60E133944F13&uin=0&fromtag=38",
-                "mp3_l": "http:\/\/mobileoc.music.tc.qq.com\/M500001fApzM4Rymgq.mp3?guid=2095717240&vkey=23EB99E476D5EB7936AF440461D097689A00AE211B2D1725B9703A9459A1239301BF19E0A098B30CC9F4503C8DBDA65FD85E60E133944F13&uin=0&fromtag=53",
-                "mp3_h": "http:\/\/mobileoc.music.tc.qq.com\/M800001fApzM4Rymgq.mp3?guid=2095717240&vkey=23EB99E476D5EB7936AF440461D097689A00AE211B2D1725B9703A9459A1239301BF19E0A098B30CC9F4503C8DBDA65FD85E60E133944F13&uin=0&fromtag=53",
-                "ape": "http:\/\/mobileoc.music.tc.qq.com\/A000001fApzM4Rymgq.ape?guid=2095717240&vkey=23EB99E476D5EB7936AF440461D097689A00AE211B2D1725B9703A9459A1239301BF19E0A098B30CC9F4503C8DBDA65FD85E60E133944F13&uin=0&fromtag=53",
-                "flac": "http:\/\/mobileoc.music.tc.qq.com\/F000001fApzM4Rymgq.flac?guid=2095717240&vkey=23EB99E476D5EB7936AF440461D097689A00AE211B2D1725B9703A9459A1239301BF19E0A098B30CC9F4503C8DBDA65FD85E60E133944F13&uin=0&fromtag=53",
-                "songname": "\u6000\u74a7\u8d74\u524d\u5c18",
-                "albumname": "\u603b\u507f\u76f8\u601d",
-                "singername": "\u53f8\u590f",
-                "pic": "https:\/\/y.gtimg.cn\/music\/photo_new\/T002R300x300M0000022qglb0tOda5_1.jpg?max_age=2592000",
-                "mv": "\u6682\u65e0MV",
-                "lrc": "[ti:]\n[ar:]\n[al:]\n[by:\u65f6\u95f4\u6233\u5de5\u5177V2.0_20200505]\n[offset:0]\n[00:00.00]\u6000\u74a7\u8d74\u524d\u5c18\n[00:01.50]\u4f5c\u8bcd\uff1a\u6d41\u5149\n[00:03.01]\u4f5c\/\u7f16\u66f2\uff1a\u4e00\u53ea\u9c7c\u5361\n[00:04.51]\u6f14\u5531\uff1a\u53f8\u590f\n[00:06.02]\u4fee\u97f3\uff1a\u6c64\u5706w\n[00:07.53]\u6df7\u97f3\uff1aWuli\u5305\u5b50\n[00:09.03]\u6587\u6848\uff1a\u8c22\u77e5\u8a00\n[00:10.54]\u7f8e\u5de5\uff1a\u4f5c\u8086\n[00:12.04]\u5236\u4f5c\u4eba\uff1a\u6c90\u4e88\n[00:13.55]\u51fa\u54c1\uff1a\u7c73\u6f2b\u4f20\u5a92\n[00:15.06]\u5236\u4f5c\uff1a\u8d4f\u4e50\u8ba1\u5212\n[00:16.56]\u827a\u672f\u7edf\u7b79\uff1a\u697c\u5c0f\u6728\n[00:18.07]\u53d1\u884c\uff1a\u7396\u8bb8\n[00:19.59]\u9879\u76ee\u76d1\u7763\uff1a\u5b59\u534e\u5b81\n[00:27.51]\u522b\u6765\u5df2\u662f\u767e\u5e74\u8eab\n[00:33.39]\u788c\u788c\u7ea2\u5c18\u8001\u82b1\u6708\u60c5\u6839\n[00:40.08]\u9752\u9752\u9b02\u4ed8\u9752\u9752\u575f\n[00:43.56]\u76f8\u601d\u4e24\u5904\u5173\u5c71\u963b\u68a6\u9b42\n[00:52.77]\u541b\u5b50\u6380\u5e18\u773a\u6625\u6df1\n[00:58.71]\u6c49\u768b\u89e3\u4f69\u6000\u74a7\u9057\u4f73\u4eba\n[01:05.34]\u98de\u5149\u4e0d\u6765\u96ea\u76c8\u6a3d\n[01:11.28]\u4f73\u4eba\u53bb\u4e5f\u70df\u6708\u4ff1\u6c89\u6c89\n[01:15.15]\u5979\u6709\u51b0\u96ea\u9b42\u9b44\u4e03\u5e74\u9010\u70df\u6ce2\n[01:23.76]\u6f14\u4e00\u526f\u591a\u60c5\u8eab\u7ea2\u5c18\u91cc\u6d88\u78e8\n[01:30.30]\u6b4c\u6b7b\u751f\u5951\u9614\u5531\u4e0e\u5b50\u6210\u8bf4\n[01:36.15]\u5374\u5c06\u75f4\u5fc3\u4e00\u63e1\u6258\u4f53\u540c\u5c71\u963f\n[02:08.52]\u541b\u5b50\u6380\u5e18\u773a\u6625\u6df1\n[02:14.46]\u6c49\u768b\u89e3\u4f69\u6000\u74a7\u9057\u4f73\u4eba\n[02:21.12]\u98de\u5149\u4e0d\u6765\u96ea\u76c8\u6a3d\n[02:27.03]\u4f73\u4eba\u53bb\u4e5f\u70df\u6708\u4ff1\u6c89\u6c89\n[02:32.67]\u5979\u6709\u51b0\u96ea\u9b42\u9b44\u4e03\u5e74\u9010\u70df\u6ce2\n[02:39.00]\u6f14\u4e00\u526f\u591a\u60c5\u8eab\u7ea2\u5c18\u91cc\u6d88\u78e8\n[02:46.08]\u6b4c\u6b7b\u751f\u5951\u9614\u5531\u4e0e\u5b50\u6210\u8bf4\n[02:51.99]\u5374\u5c06\u75f4\u5fc3\u4e00\u63e1\u6258\u4f53\u540c\u5c71\u963f\n[02:56.13]\u5979\u6709\u51b0\u96ea\u9b42\u9b44\u4e03\u5e74\u9010\u70df\u6ce2\n[03:05.04]\u6f14\u4e00\u526f\u591a\u60c5\u8eab\u7ea2\u5c18\u91cc\u6d88\u78e8\n[03:11.37]\u6b4c\u6b7b\u751f\u5951\u9614\u5531\u4e0e\u5b50\u6210\u8bf4\n[03:17.22]\u5374\u5c06\u75f4\u5fc3\u4e00\u63e1\u6258\u4f53\u540c\u5c71\u963f\n[04:00.00]"
-            }*/
-            QString m4a = json.value("m4a").toString(); // 视频？但好像能直接播放
-            QString mp3_l = json.value("mp3_l").toString(); // 普通品质
-            QString mp3_h = json.value("mp3_h").toString(); // 高品质
-            QString ape = json.value("ape").toString(); // 高品无损
-            QString flac = json.value("flac").toString(); // 无损音频
+            if (unblockQQMusic)
+            {
+                /*{
+                    "mid": "001fApzM4Rymgq",
+                    "m4a": "http:\/\/aqqmusic.tc.qq.com\/amobile.music.tc.qq.com\/C400001fApzM4Rymgq.m4a?guid=2095717240&vkey=23EB99E476D5EB7936AF440461D097689A00AE211B2D1725B9703A9459A1239301BF19E0A098B30CC9F4503C8DBDA65FD85E60E133944F13&uin=0&fromtag=38",
+                    "mp3_l": "http:\/\/mobileoc.music.tc.qq.com\/M500001fApzM4Rymgq.mp3?guid=2095717240&vkey=23EB99E476D5EB7936AF440461D097689A00AE211B2D1725B9703A9459A1239301BF19E0A098B30CC9F4503C8DBDA65FD85E60E133944F13&uin=0&fromtag=53",
+                    "mp3_h": "http:\/\/mobileoc.music.tc.qq.com\/M800001fApzM4Rymgq.mp3?guid=2095717240&vkey=23EB99E476D5EB7936AF440461D097689A00AE211B2D1725B9703A9459A1239301BF19E0A098B30CC9F4503C8DBDA65FD85E60E133944F13&uin=0&fromtag=53",
+                    "ape": "http:\/\/mobileoc.music.tc.qq.com\/A000001fApzM4Rymgq.ape?guid=2095717240&vkey=23EB99E476D5EB7936AF440461D097689A00AE211B2D1725B9703A9459A1239301BF19E0A098B30CC9F4503C8DBDA65FD85E60E133944F13&uin=0&fromtag=53",
+                    "flac": "http:\/\/mobileoc.music.tc.qq.com\/F000001fApzM4Rymgq.flac?guid=2095717240&vkey=23EB99E476D5EB7936AF440461D097689A00AE211B2D1725B9703A9459A1239301BF19E0A098B30CC9F4503C8DBDA65FD85E60E133944F13&uin=0&fromtag=53",
+                    "songname": "\u6000\u74a7\u8d74\u524d\u5c18",
+                    "albumname": "\u603b\u507f\u76f8\u601d",
+                    "singername": "\u53f8\u590f",
+                    "pic": "https:\/\/y.gtimg.cn\/music\/photo_new\/T002R300x300M0000022qglb0tOda5_1.jpg?max_age=2592000",
+                    "mv": "\u6682\u65e0MV",
+                    "lrc": "[ti:]\n[ar:]\n[al:]\n[by:\u65f6\u95f4\u6233\u5de5\u5177V2.0_20200505]\n[offset:0]\n[00:00.00]\u6000\u74a7\u8d74\u524d\u5c18\n[00:01.50]\u4f5c\u8bcd\uff1a\u6d41\u5149\n[00:03.01]\u4f5c\/\u7f16\u66f2\uff1a\u4e00\u53ea\u9c7c\u5361\n[00:04.51]\u6f14\u5531\uff1a\u53f8\u590f\n[00:06.02]\u4fee\u97f3\uff1a\u6c64\u5706w\n[00:07.53]\u6df7\u97f3\uff1aWuli\u5305\u5b50\n[00:09.03]\u6587\u6848\uff1a\u8c22\u77e5\u8a00\n[00:10.54]\u7f8e\u5de5\uff1a\u4f5c\u8086\n[00:12.04]\u5236\u4f5c\u4eba\uff1a\u6c90\u4e88\n[00:13.55]\u51fa\u54c1\uff1a\u7c73\u6f2b\u4f20\u5a92\n[00:15.06]\u5236\u4f5c\uff1a\u8d4f\u4e50\u8ba1\u5212\n[00:16.56]\u827a\u672f\u7edf\u7b79\uff1a\u697c\u5c0f\u6728\n[00:18.07]\u53d1\u884c\uff1a\u7396\u8bb8\n[00:19.59]\u9879\u76ee\u76d1\u7763\uff1a\u5b59\u534e\u5b81\n[00:27.51]\u522b\u6765\u5df2\u662f\u767e\u5e74\u8eab\n[00:33.39]\u788c\u788c\u7ea2\u5c18\u8001\u82b1\u6708\u60c5\u6839\n[00:40.08]\u9752\u9752\u9b02\u4ed8\u9752\u9752\u575f\n[00:43.56]\u76f8\u601d\u4e24\u5904\u5173\u5c71\u963b\u68a6\u9b42\n[00:52.77]\u541b\u5b50\u6380\u5e18\u773a\u6625\u6df1\n[00:58.71]\u6c49\u768b\u89e3\u4f69\u6000\u74a7\u9057\u4f73\u4eba\n[01:05.34]\u98de\u5149\u4e0d\u6765\u96ea\u76c8\u6a3d\n[01:11.28]\u4f73\u4eba\u53bb\u4e5f\u70df\u6708\u4ff1\u6c89\u6c89\n[01:15.15]\u5979\u6709\u51b0\u96ea\u9b42\u9b44\u4e03\u5e74\u9010\u70df\u6ce2\n[01:23.76]\u6f14\u4e00\u526f\u591a\u60c5\u8eab\u7ea2\u5c18\u91cc\u6d88\u78e8\n[01:30.30]\u6b4c\u6b7b\u751f\u5951\u9614\u5531\u4e0e\u5b50\u6210\u8bf4\n[01:36.15]\u5374\u5c06\u75f4\u5fc3\u4e00\u63e1\u6258\u4f53\u540c\u5c71\u963f\n[02:08.52]\u541b\u5b50\u6380\u5e18\u773a\u6625\u6df1\n[02:14.46]\u6c49\u768b\u89e3\u4f69\u6000\u74a7\u9057\u4f73\u4eba\n[02:21.12]\u98de\u5149\u4e0d\u6765\u96ea\u76c8\u6a3d\n[02:27.03]\u4f73\u4eba\u53bb\u4e5f\u70df\u6708\u4ff1\u6c89\u6c89\n[02:32.67]\u5979\u6709\u51b0\u96ea\u9b42\u9b44\u4e03\u5e74\u9010\u70df\u6ce2\n[02:39.00]\u6f14\u4e00\u526f\u591a\u60c5\u8eab\u7ea2\u5c18\u91cc\u6d88\u78e8\n[02:46.08]\u6b4c\u6b7b\u751f\u5951\u9614\u5531\u4e0e\u5b50\u6210\u8bf4\n[02:51.99]\u5374\u5c06\u75f4\u5fc3\u4e00\u63e1\u6258\u4f53\u540c\u5c71\u963f\n[02:56.13]\u5979\u6709\u51b0\u96ea\u9b42\u9b44\u4e03\u5e74\u9010\u70df\u6ce2\n[03:05.04]\u6f14\u4e00\u526f\u591a\u60c5\u8eab\u7ea2\u5c18\u91cc\u6d88\u78e8\n[03:11.37]\u6b4c\u6b7b\u751f\u5951\u9614\u5531\u4e0e\u5b50\u6210\u8bf4\n[03:17.22]\u5374\u5c06\u75f4\u5fc3\u4e00\u63e1\u6258\u4f53\u540c\u5c71\u963f\n[04:00.00]"
+                }*/
+                QString m4a = json.value("m4a").toString(); // 视频？但好像能直接播放
+                QString mp3_l = json.value("mp3_l").toString(); // 普通品质
+                QString mp3_h = json.value("mp3_h").toString(); // 高品质
+                QString ape = json.value("ape").toString(); // 高品无损
+                QString flac = json.value("flac").toString(); // 无损音频
 
-            // 实测只有 m4a 能播放……
-            if (!m4a.isEmpty())
-                fileUrl = m4a;
-            else if (!mp3_h.isEmpty())
-                fileUrl = mp3_h;
-            else if (!mp3_l.isEmpty())
-                fileUrl = mp3_l;
-            else if (!ape.isEmpty())
-                fileUrl = ape;
-            else if (!flac.isEmpty())
-                fileUrl = flac;
+                // 实测只有 m4a 能播放……
+                if (!m4a.isEmpty())
+                    fileUrl = m4a;
+                else if (!mp3_h.isEmpty())
+                    fileUrl = mp3_h;
+                else if (!mp3_l.isEmpty())
+                    fileUrl = mp3_l;
+                else if (!ape.isEmpty())
+                    fileUrl = ape;
+                else if (!flac.isEmpty())
+                    fileUrl = flac;
+            }
             else
+            {
+                QJsonObject playUrl = json.value("data").toObject().value("playUrl").toObject();
+                fileUrl = playUrl.value(song.mid).toObject().value("url").toString();
+                if (fileUrl.isEmpty())
+                {
+                    QString error = playUrl.value("").toObject().value("error").toString();
+                    if (!error.isEmpty())
+                        qDebug() << "无法播放音乐：" << song.simpleString() << error;
+                }
+            }
+
+            if (fileUrl.isEmpty())
             {
                 qDebug() << "无法下载，歌曲不存在或没有版权" << song.simpleString();
                 if (playAfterDownloaded == song)
@@ -2631,6 +2652,10 @@ void OrderPlayerWindow::on_settingsButton_clicked()
         });
         dialog->exec();
     })->check(!neteaseCookies.isEmpty() || !qqmusicCookies.isEmpty());
+
+    menu->split()->addAction("特殊接口", [=]{
+        settings.setValue("music/unblockQQMusic", unblockQQMusic = !unblockQQMusic);
+    })->check(unblockQQMusic);
 
     menu->exec();
 }
