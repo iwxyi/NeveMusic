@@ -246,6 +246,7 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     autoSwitchSource = settings.value("music/autoSwitchSource", true).toBool();
 
     // 读取cookie
+    songBr = settings.value("music/br", 320000).toInt();
     neteaseCookies = settings.value("music/neteaseCookies").toString();
     neteaseCookiesVariant = getCookies(neteaseCookies);
     qqmusicCookies = settings.value("music/qqmusicCookies").toString();
@@ -1244,7 +1245,7 @@ void OrderPlayerWindow::downloadSong(Song song)
     QString url;
     switch (song.source) {
     case NeteaseCloudMusic:
-        url = NETEASE_SERVER + "/song/url?id=" + snum(song.id);
+        url = NETEASE_SERVER + "/song/url?id=" + snum(song.id) + "&br=" + snum(songBr);
         break;
     case QQMusic:
         if (unblockQQMusic)
@@ -1711,6 +1712,16 @@ void OrderPlayerWindow::openPlayList(QString shareUrl)
         }
     });
 
+}
+
+void OrderPlayerWindow::clearDownloadFiles()
+{
+    QList<QFileInfo> files = musicsFileDir.entryInfoList(QDir::Files);
+    foreach (QFileInfo info, files)
+    {
+        QFile f;
+        f.remove(info.absoluteFilePath());
+    }
 }
 
 void OrderPlayerWindow::adjustExpandPlayingButton()
@@ -2422,7 +2433,6 @@ void OrderPlayerWindow::on_historySongsListView_customContextMenuRequested(const
             path = lyricPath(song);
             if (QFileInfo(path).exists())
                 QFile(path).remove();
-
         }
     })->disable(!currentSong.isValid());
 
@@ -2593,6 +2603,16 @@ void OrderPlayerWindow::adjustCurrentLyricTime(QString lyric)
 void OrderPlayerWindow::on_settingsButton_clicked()
 {
     FacileMenu* menu = new FacileMenu(this);
+
+    menu->addAction("音乐品质", [=]{
+        bool ok = false;
+        int br = QInputDialog::getInt(this, "设置码率", "请输入音乐码率，越高越清晰，体积也更大\n修改后将清理所有缓存，重新下载歌曲文件", songBr, 128000, 1280000, 10000, &ok);
+        if (!ok)
+            return ;
+        if (songBr != br)
+            clearDownloadFiles();
+        settings.setValue("music/br", songBr = br);
+    })->uncheck();
 
     menu->addAction("双击播放", [=]{
         settings.setValue("music/doubleClickToPlay", doubleClickToPlay = !doubleClickToPlay);
