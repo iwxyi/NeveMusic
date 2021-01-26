@@ -9,6 +9,8 @@ LoginDialog::LoginDialog(QWidget *parent) :
     ui->setupUi(this);
     setAttribute(Qt::WA_DeleteOnClose, true);
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
+
+    ui->stackedWidget->setCurrentIndex(0);
 }
 
 LoginDialog::~LoginDialog()
@@ -26,12 +28,19 @@ void LoginDialog::on_loginButton_clicked()
             return ;
         loginNetease(username, password);
     }
-    else if (ui->qqmusicRadio->isChecked())
+    else if (ui->neteaseCookieRadio->isChecked())
     {
-        QString cookies = ui->qqmusicCookieEdit->toPlainText();
+        QString cookies = ui->cookieEdit->toPlainText();
         if (cookies.isEmpty())
             return ;
-        loginQQMusic(cookies);
+        cookieNetease(cookies);
+    }
+    else if (ui->qqmusicCookieRadio->isChecked())
+    {
+        QString cookies = ui->cookieEdit->toPlainText();
+        if (cookies.isEmpty())
+            return ;
+        cookieQQMusic(cookies);
     }
 }
 
@@ -49,7 +58,8 @@ void LoginDialog::loginNetease(QString username, QString password)
     request->setHeader(QNetworkRequest::UserAgentHeader, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/86.0.4240.111 Safari/537.36");
     connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
         QJsonParseError error;
-        QJsonDocument document = QJsonDocument::fromJson(reply->readAll(), &error);
+        QByteArray ba = reply->readAll();
+        QJsonDocument document = QJsonDocument::fromJson(ba, &error);
         if (error.error != QJsonParseError::NoError)
         {
             qDebug() << error.errorString();
@@ -67,7 +77,7 @@ void LoginDialog::loginNetease(QString username, QString password)
         {
             QByteArray cookie = reply->rawHeader("Set-Cookie");
             qDebug() << "cookie:" << cookie;
-            qDebug() << "data:" << QString(reply->readAll());
+            qDebug() << "data:" << ba;
             emit signalLogined(NeteaseCloudMusic, cookie);
         }
 
@@ -79,7 +89,13 @@ void LoginDialog::loginNetease(QString username, QString password)
     manager->get(*request);
 }
 
-void LoginDialog::loginQQMusic(QString cookies)
+void LoginDialog::cookieNetease(QString cookies)
+{
+    emit signalLogined(NeteaseCloudMusic, cookies);
+    this->close();
+}
+
+void LoginDialog::cookieQQMusic(QString cookies)
 {
     emit signalLogined(QQMusic, cookies);
     this->close();
@@ -90,13 +106,18 @@ void LoginDialog::on_neteaseRadio_clicked()
     ui->stackedWidget->setCurrentIndex(0);
 }
 
-void LoginDialog::on_qqmusicRadio_clicked()
+void LoginDialog::on_cookieHelpButton_clicked()
+{
+    QString text = "目前只支持用户自己从 网易云音乐/QQ音乐 的网页版获取获取 Cookie。\n\n步骤：\n浏览器登录按 F12 打开开发者工具, 找到 Network\n随便进入网易云音乐/QQ音乐的网页, 复制右边 request headers 中的 Cookie";
+    QMessageBox::information(this, "获取Cookies", text);
+}
+
+void LoginDialog::on_neteaseCookieRadio_clicked()
 {
     ui->stackedWidget->setCurrentIndex(1);
 }
 
-void LoginDialog::on_cookieHelpButton_clicked()
+void LoginDialog::on_qqmusicCookieRadio_clicked()
 {
-    QString text = "目前只支持用户自己从 QQ音乐 获取获取 Cookie。\n\n步骤：\n浏览器登录按 F12 打开开发者工具, 找到 Network\n随便进入QQ音乐的网页, 复制右边 request headers 中的 Cookie";
-    QMessageBox::information(this, "获取Cookies", text);
+    ui->stackedWidget->setCurrentIndex(1);
 }

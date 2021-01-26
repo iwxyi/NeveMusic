@@ -240,6 +240,7 @@ private:
     void setCurrentLyric(QString lyric);
     void openPlayList(QString shareUrl);
     void clearDownloadFiles();
+    void clearHoaryFiles();
 
     void adjustExpandPlayingButton();
     void connectDesktopLyricSignals();

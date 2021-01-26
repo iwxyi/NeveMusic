@@ -19,7 +19,7 @@
      <item>
       <widget class="QRadioButton" name="neteaseRadio">
        <property name="text">
-        <string>网易云音乐</string>
+        <string>网易云登录</string>
        </property>
        <property name="checked">
         <bool>true</bool>
@@ -27,12 +27,19 @@
       </widget>
      </item>
      <item>
-      <widget class="QRadioButton" name="qqmusicRadio">
+      <widget class="QRadioButton" name="neteaseCookieRadio">
+       <property name="text">
+        <string>网易云Cookie</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QRadioButton" name="qqmusicCookieRadio">
        <property name="enabled">
         <bool>true</bool>
        </property>
        <property name="text">
-        <string>QQ音乐</string>
+        <string>QQ音乐Cookie</string>
        </property>
       </widget>
      </item>
@@ -41,7 +48,7 @@
    <item>
     <widget class="QStackedWidget" name="stackedWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="neteasePage">
       <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -71,7 +78,17 @@
         </spacer>
        </item>
        <item>
+        <widget class="QLabel" name="label_5">
+         <property name="text">
+          <string>登录VIP账号以播放相应歌曲</string>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QLabel" name="label_4">
+         <property name="styleSheet">
+          <string notr="true"/>
+         </property>
          <property name="text">
           <string>本程序承诺不会以任何形式存储用户密码，请放心使用</string>
          </property>
@@ -147,7 +164,7 @@
          <item>
           <widget class="QLabel" name="label_3">
            <property name="text">
-            <string>输入QQ音乐的Cookies</string>
+            <string>输入浏览器Cookies</string>
            </property>
           </widget>
          </item>
@@ -174,7 +191,7 @@
         </layout>
        </item>
        <item>
-        <widget class="QPlainTextEdit" name="qqmusicCookieEdit"/>
+        <widget class="QPlainTextEdit" name="cookieEdit"/>
        </item>
       </layout>
      </widget>

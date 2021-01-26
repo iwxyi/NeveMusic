@@ -147,6 +147,7 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     });
     connect(player, &QMediaPlayer::durationChanged, this, [=](qint64 duration){
         ui->playProgressSlider->setMaximum(static_cast<int>(duration));
+        ui->playingAllTimeLabel->setText(msecondToString(duration));
         if (setPlayPositionAfterLoad)
         {
             player->setPosition(setPlayPositionAfterLoad);
@@ -295,6 +296,8 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
             slotPlayerPositionChanged();
     });
     starting = false;
+
+    clearHoaryFiles();
 }
 
 OrderPlayerWindow::~OrderPlayerWindow()
@@ -1152,7 +1155,7 @@ void OrderPlayerWindow::playLocalSong(Song song)
     };
     ui->playingNameLabel->setText(max16(song.name));
     ui->playingArtistLabel->setText(max16(song.artistNames));
-    ui->playingAllTimeLabel->setText(msecondToString(song.duration));
+
     // 设置封面
     if (QFileInfo(coverPath(song)).exists())
     {
@@ -1721,6 +1724,20 @@ void OrderPlayerWindow::clearDownloadFiles()
     {
         QFile f;
         f.remove(info.absoluteFilePath());
+    }
+}
+
+void OrderPlayerWindow::clearHoaryFiles()
+{
+    qint64 current = QDateTime::currentSecsSinceEpoch();
+    QList<QFileInfo> files = musicsFileDir.entryInfoList(QDir::Files);
+    foreach (QFileInfo info, files)
+    {
+        if (info.lastModified().toSecsSinceEpoch() + 604800 < current) // 七天前的
+        {
+            QFile f;
+            f.remove(info.absoluteFilePath());
+        }
     }
 }
 
@@ -2669,6 +2686,7 @@ void OrderPlayerWindow::on_settingsButton_clicked()
                 qqmusicCookiesVariant = getCookies(qqmusicCookies);
                 break;
             }
+            clearDownloadFiles();
         });
         dialog->exec();
     })->check(!neteaseCookies.isEmpty() || !qqmusicCookies.isEmpty());
