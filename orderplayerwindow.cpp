@@ -1373,7 +1373,7 @@ void OrderPlayerWindow::downloadSong(Song song)
                 fileUrl = playUrl.value(song.mid).toObject().value("url").toString();
                 if (fileUrl.isEmpty())
                 {
-                    QString error = playUrl.value("").toObject().value("error").toString();
+                    QString error = playUrl.value(song.mid).toObject().value("error").toString();
                     if (!error.isEmpty())
                         qDebug() << "无法播放音乐：" << song.simpleString() << error;
                 }
@@ -1532,8 +1532,6 @@ void OrderPlayerWindow::downloadSongCover(Song song)
             if (!array.size())
             {
                 qDebug() << "未找到歌曲：" << song.simpleString();
-//                downloadingSong = Song();
-//                downloadNext();
                 return ;
             }
 
@@ -1545,8 +1543,6 @@ void OrderPlayerWindow::downloadSongCover(Song song)
             if (json.value("code").toInt() != 0)
             {
                 qDebug() << ("封面返回结果不为0：") << json.value("message").toString();
-//                downloadingSong = Song();
-//                downloadNext();
                 return ;
             }
             url = json.value("response").toObject().value("data").toObject().value("imageUrl").toString();
@@ -2645,7 +2641,7 @@ void OrderPlayerWindow::on_settingsButton_clicked()
         {
             neteaseCookies = "";
             neteaseCookiesVariant.clear();
-            settings.setValue("music/neteaseCookie", "");
+            settings.setValue("music/neteaseCookies", "");
         }
     })->check(!neteaseCookies.isEmpty())->disable(neteaseCookies.isEmpty());
 
@@ -2654,7 +2650,7 @@ void OrderPlayerWindow::on_settingsButton_clicked()
         {
             qqmusicCookies = "";
             qqmusicCookiesVariant.clear();
-            settings.setValue("music/qqmusicCookie", "");
+            settings.setValue("music/qqmusicCookies", "");
         }
     })->check(!qqmusicCookies.isEmpty())->disable(qqmusicCookies.isEmpty());
 
