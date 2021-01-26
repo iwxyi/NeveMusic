@@ -2022,7 +2022,7 @@ void OrderPlayerWindow::fetch(QString url, NetReplyFunc func)
     if (!neteaseCookies.isEmpty() && url.startsWith(NETEASE_SERVER))
         request->setHeader(QNetworkRequest::CookieHeader, neteaseCookiesVariant);
     else if (!qqmusicCookies.isEmpty() && url.startsWith(QQMUSIC_SERVER))
-        ; // 暂时不支持QQ音乐的登录
+        request->setHeader(QNetworkRequest::CookieHeader, qqmusicCookiesVariant);
     connect(manager, &QNetworkAccessManager::finished, this, [=](QNetworkReply* reply){
         manager->deleteLater();
         delete request;
@@ -2693,6 +2693,8 @@ void OrderPlayerWindow::on_settingsButton_clicked()
 
     menu->split()->addAction("特殊接口", [=]{
         settings.setValue("music/unblockQQMusic", unblockQQMusic = !unblockQQMusic);
+        if (unblockQQMusic)
+            QMessageBox::information(this, "特殊接口", "可在不登录的情况下试听QQ音乐的VIP歌曲1分钟\n若已登录QQ音乐的会员用户，十分建议关掉");
     })->check(unblockQQMusic);
 
     menu->exec();
