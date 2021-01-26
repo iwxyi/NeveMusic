@@ -8,8 +8,7 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
       musicsFileDir(QApplication::applicationDirPath()+"/musics"),
       player(new QMediaPlayer(this)),
       desktopLyric(new DesktopLyricWidget(settings, nullptr)),
-      expandPlayingButton(new InteractiveButtonBase(this)),
-      playingPositionTimer(new QTimer(this))
+      expandPlayingButton(new InteractiveButtonBase(this))
 {
     starting = true;
     ui->setupUi(this);
@@ -141,6 +140,7 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
 
     connect(ui->searchResultTable->horizontalHeader(), SIGNAL(sectionClicked(int)), this, SLOT(sortSearchResult(int)));
 
+    player->setNotifyInterval(100);
     connect(player, &QMediaPlayer::positionChanged, this, [=](qint64 position){
         ui->playingCurrentTimeLabel->setText(msecondToString(position));
         slotPlayerPositionChanged();
@@ -168,12 +168,10 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     connect(player, &QMediaPlayer::stateChanged, this, [=](QMediaPlayer::State state){
         if (state == QMediaPlayer::PlayingState)
         {
-            playingPositionTimer->start();
             ui->playButton->setIcon(QIcon(":/icons/pause"));
         }
         else
         {
-            playingPositionTimer->stop();
             ui->playButton->setIcon(QIcon(":/icons/play"));
         }
     });
@@ -290,11 +288,6 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
 
     prevBlurBg = QPixmap(32, 32);
     prevBlurBg.fill(QColor(245, 245, 247));
-    playingPositionTimer->setInterval(100);
-    connect(playingPositionTimer, &QTimer::timeout, this, [=]{
-        if (player->state() == QMediaPlayer::PlayingState)
-            slotPlayerPositionChanged();
-    });
     starting = false;
 
     clearHoaryFiles();
@@ -2631,7 +2624,27 @@ void OrderPlayerWindow::on_settingsButton_clicked()
         settings.setValue("music/br", songBr = br);
     })->uncheck();
 
-    menu->addAction("双击播放", [=]{
+    menu->addAction("账号登录", [=]{
+        LoginDialog* dialog = new LoginDialog(this);
+        connect(dialog, &LoginDialog::signalLogined, this, [=](MusicSource source, QString cookies){
+            switch (source) {
+            case NeteaseCloudMusic:
+                neteaseCookies = cookies;
+                settings.setValue("music/neteaseCookies", cookies);
+                neteaseCookiesVariant = getCookies(neteaseCookies);
+                break;
+            case QQMusic:
+                qqmusicCookies = cookies;
+                settings.setValue("music/qqmusicCookies", cookies);
+                qqmusicCookiesVariant = getCookies(qqmusicCookies);
+                break;
+            }
+            clearDownloadFiles();
+        });
+        dialog->exec();
+    })->check(!neteaseCookies.isEmpty() || !qqmusicCookies.isEmpty());
+
+    menu->split()->addAction("双击播放", [=]{
         settings.setValue("music/doubleClickToPlay", doubleClickToPlay = !doubleClickToPlay);
     })->check(doubleClickToPlay);
 
@@ -2660,7 +2673,7 @@ void OrderPlayerWindow::on_settingsButton_clicked()
         setBlurBackground(currentCover);
     });
 
-    menu->split()->addAction("主题变色", [=]{
+    menu->addAction("主题变色", [=]{
         settings.setValue("music/themeColor", themeColor = !themeColor);
         if (themeColor)
             setThemeColor(currentCover);
@@ -2671,27 +2684,7 @@ void OrderPlayerWindow::on_settingsButton_clicked()
         settings.setValue("music/autoSwitchSource", autoSwitchSource = !autoSwitchSource);
     })->setChecked(autoSwitchSource);
 
-    menu->addAction("账号登录", [=]{
-        LoginDialog* dialog = new LoginDialog(this);
-        connect(dialog, &LoginDialog::signalLogined, this, [=](MusicSource source, QString cookies){
-            switch (source) {
-            case NeteaseCloudMusic:
-                neteaseCookies = cookies;
-                settings.setValue("music/neteaseCookies", cookies);
-                neteaseCookiesVariant = getCookies(neteaseCookies);
-                break;
-            case QQMusic:
-                qqmusicCookies = cookies;
-                settings.setValue("music/qqmusicCookies", cookies);
-                qqmusicCookiesVariant = getCookies(qqmusicCookies);
-                break;
-            }
-            clearDownloadFiles();
-        });
-        dialog->exec();
-    })->check(!neteaseCookies.isEmpty() || !qqmusicCookies.isEmpty());
-
-    menu->split()->addAction("特殊接口", [=]{
+    menu->addAction("特殊接口", [=]{
         settings.setValue("music/unblockQQMusic", unblockQQMusic = !unblockQQMusic);
         if (unblockQQMusic)
             QMessageBox::information(this, "特殊接口", "可在不登录的情况下试听QQ音乐的VIP歌曲1分钟\n若已登录QQ音乐的会员用户，十分建议关掉");

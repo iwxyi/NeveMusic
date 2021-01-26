@@ -305,7 +305,6 @@ private:
     QMediaPlayer* player;
     PlayCircleMode circleMode = OrderList;
     Song playingSong;
-    QTimer* playingPositionTimer;
     int lyricScroll;
 
     bool doubleClickToPlay = false; // 双击是立即播放，还是添加到列表
