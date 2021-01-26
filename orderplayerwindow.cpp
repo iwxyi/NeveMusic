@@ -503,6 +503,7 @@ void OrderPlayerWindow::setSearchResultTable(SongList songs)
         table->setItem(row, albumCol, createItem(song.album.name));
         table->setItem(row, durationCol, createItem(msecondToString(song.duration)));
     }
+    table->verticalScrollBar()->setSliderPosition(0); // 置顶
 
     QTimer::singleShot(0, [=]{
         table->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
@@ -2614,17 +2615,9 @@ void OrderPlayerWindow::on_settingsButton_clicked()
 {
     FacileMenu* menu = new FacileMenu(this);
 
-    menu->addAction("音乐品质", [=]{
-        bool ok = false;
-        int br = QInputDialog::getInt(this, "设置码率", "请输入音乐码率，越高越清晰，体积也更大\n修改后将清理所有缓存，重新下载歌曲文件", songBr, 128000, 1280000, 10000, &ok);
-        if (!ok)
-            return ;
-        if (songBr != br)
-            clearDownloadFiles();
-        settings.setValue("music/br", songBr = br);
-    })->uncheck();
+    FacileMenu* accountMenu = menu->addMenu("账号");
 
-    menu->addAction("账号登录", [=]{
+    accountMenu->addAction("添加账号", [=]{
         LoginDialog* dialog = new LoginDialog(this);
         connect(dialog, &LoginDialog::signalLogined, this, [=](MusicSource source, QString cookies){
             switch (source) {
@@ -2637,27 +2630,69 @@ void OrderPlayerWindow::on_settingsButton_clicked()
                 qqmusicCookies = cookies;
                 settings.setValue("music/qqmusicCookies", cookies);
                 qqmusicCookiesVariant = getCookies(qqmusicCookies);
+                if (unblockQQMusic)
+                    settings.setValue("music/unblockQQMusic", unblockQQMusic = false);
                 break;
             }
             clearDownloadFiles();
         });
         dialog->exec();
-    })->check(!neteaseCookies.isEmpty() || !qqmusicCookies.isEmpty());
+    })->uncheck();
 
-    menu->split()->addAction("双击播放", [=]{
+    accountMenu->split();
+    accountMenu->addAction("网易云音乐", [=]{
+        if (QMessageBox::question(this, "网易云音乐", "是否退出网易云音乐账号？") == QMessageBox::Yes)
+        {
+            neteaseCookies = "";
+            neteaseCookiesVariant.clear();
+            settings.setValue("music/neteaseCookie", "");
+        }
+    })->check(!neteaseCookies.isEmpty())->disable(neteaseCookies.isEmpty());
+
+    accountMenu->addAction("QQ音乐", [=]{
+        if (QMessageBox::question(this, "QQ音乐", "是否退出QQ音乐账号？") == QMessageBox::Yes)
+        {
+            qqmusicCookies = "";
+            qqmusicCookiesVariant.clear();
+            settings.setValue("music/qqmusicCookie", "");
+        }
+    })->check(!qqmusicCookies.isEmpty())->disable(qqmusicCookies.isEmpty());
+
+    FacileMenu* playMenu = menu->addMenu("播放");
+
+    playMenu->addAction("音乐品质", [=]{
+        bool ok = false;
+        int br = QInputDialog::getInt(this, "设置码率", "请输入音乐码率，越高越清晰，体积也更大\n修改后将清理所有缓存，重新下载歌曲文件", songBr, 128000, 1280000, 10000, &ok);
+        if (!ok)
+            return ;
+        if (songBr != br)
+            clearDownloadFiles();
+        settings.setValue("music/br", songBr = br);
+    })->check(songBr >= 320000);
+
+    playMenu->addAction("双击播放", [=]{
         settings.setValue("music/doubleClickToPlay", doubleClickToPlay = !doubleClickToPlay);
     })->check(doubleClickToPlay);
 
-    bool h = settings.value("music/hideTab", false).toBool();
-    menu->addAction("隐藏Tab", [=]{
-        settings.setValue("music/hideTab", !h);
-        if (h)
-            ui->listTabWidget->tabBar()->show();
-        else
-            ui->listTabWidget->tabBar()->hide();
-    })->check(h);
+    playMenu->split()->addAction("自动换源", [=]{
+        settings.setValue("music/autoSwitchSource", autoSwitchSource = !autoSwitchSource);
+    })->setChecked(autoSwitchSource);
 
-    menu->split()->addAction("模糊背景", [=]{
+    playMenu->addAction("特殊接口", [=]{
+        settings.setValue("music/unblockQQMusic", unblockQQMusic = !unblockQQMusic);
+        if (unblockQQMusic)
+            QMessageBox::information(this, "特殊接口", "可在不登录的情况下试听QQ音乐的VIP歌曲1分钟\n若已登录QQ音乐的会员用户，十分建议关掉");
+    })->check(unblockQQMusic);
+
+    playMenu->split()->addAction("清理缓存", [=]{
+        clearDownloadFiles();
+    })->uncheck();
+
+    FacileMenu* stMenu = menu->addMenu("设置");
+
+    bool h = settings.value("music/hideTab", false).toBool();
+
+    stMenu->addAction("模糊背景", [=]{
         settings.setValue("music/blurBg", blurBg = !blurBg);
         if (blurBg)
             setBlurBackground(currentCover);
@@ -2665,30 +2700,28 @@ void OrderPlayerWindow::on_settingsButton_clicked()
     })->setChecked(blurBg);
 
     QStringList sl{"32", "64", "96", "128"/*, "160", "192", "224", "256"*/};
-    auto blurAlphaMenu = menu->addMenu("模糊透明");
-    menu->lastAction()->hide(!blurBg)->uncheck();
+    auto blurAlphaMenu = stMenu->addMenu("模糊透明");
+    stMenu->lastAction()->hide(!blurBg)->uncheck();
     blurAlphaMenu->addOptions(sl, blurAlpha / 32 - 1, [=](int index){
         blurAlpha = (index+1) * 32;
         settings.setValue("music/blurAlpha", blurAlpha);
         setBlurBackground(currentCover);
     });
 
-    menu->addAction("主题变色", [=]{
+    stMenu->addAction("主题变色", [=]{
         settings.setValue("music/themeColor", themeColor = !themeColor);
         if (themeColor)
             setThemeColor(currentCover);
         update();
     })->setChecked(themeColor);
 
-    menu->split()->addAction("自动换源", [=]{
-        settings.setValue("music/autoSwitchSource", autoSwitchSource = !autoSwitchSource);
-    })->setChecked(autoSwitchSource);
-
-    menu->addAction("特殊接口", [=]{
-        settings.setValue("music/unblockQQMusic", unblockQQMusic = !unblockQQMusic);
-        if (unblockQQMusic)
-            QMessageBox::information(this, "特殊接口", "可在不登录的情况下试听QQ音乐的VIP歌曲1分钟\n若已登录QQ音乐的会员用户，十分建议关掉");
-    })->check(unblockQQMusic);
+    stMenu->split()->addAction("隐藏Tab", [=]{
+        settings.setValue("music/hideTab", !h);
+        if (h)
+            ui->listTabWidget->tabBar()->show();
+        else
+            ui->listTabWidget->tabBar()->hide();
+    })->check(h);
 
     menu->exec();
 }
