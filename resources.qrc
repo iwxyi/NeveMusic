@@ -38,4 +38,7 @@
         <file alias="snow5">resources/snow/snow5.png</file>
         <file alias="snowman">resources/snow/snowman.png</file>
     </qresource>
+    <qresource prefix="/bg">
+        <file alias="bg">resources/bg/bg.png</file>
+    </qresource>
 </RCC>

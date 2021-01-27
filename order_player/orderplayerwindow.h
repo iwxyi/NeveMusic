@@ -246,6 +246,7 @@ private:
     void connectDesktopLyricSignals();
     void setCurrentCover(const QPixmap& pixmap);
     void setBlurBackground(const QPixmap& bg);
+    void startBgAnimation(int duration = 2000);
     void setThemeColor(const QPixmap& cover);
 
     void readMp3Data(const QByteArray& array);
