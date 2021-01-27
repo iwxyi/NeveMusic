@@ -44,7 +44,7 @@ QT_END_NAMESPACE
 #define LISTTAB_PLAYLIST 3
 #define LISTTAB_HISTORY 3
 
-#define MUSIC_DEB if (1) qDebug()
+#define MUSIC_DEB if (0) qDebug()
 
 typedef std::function<void(QString)> const NetStringFunc;
 typedef std::function<void(QJsonObject)> const NetJsonFunc;
@@ -313,6 +313,7 @@ private:
     DesktopLyricWidget* desktopLyric;
     InteractiveButtonBase* expandPlayingButton;
 
+    Song coveringSong;
     bool blurBg = true;
     int blurAlpha = 32;
     QPixmap currentCover;
