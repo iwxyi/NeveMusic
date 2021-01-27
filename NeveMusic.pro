@@ -9,7 +9,7 @@ CONFIG += c++11
 # depend on your compiler). Please consult the documentation of the
 # deprecated API in order to know how to port your code away from it.
 DEFINES += QT_DEPRECATED_WARNINGS
-
+RC_FILE += resource.rc
 
 # You can also make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
@@ -18,39 +18,40 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 INCLUDEPATH += interactive_buttons/ \
     facile_menu/ \
-    color_octree/
+    color_octree/ \
+	order_player/
 
 SOURCES += \
     color_octree/coloroctree.cpp \
     color_octree/imageutil.cpp \
-    desktoplyricwidget.cpp \
+    order_player/desktoplyricwidget.cpp \
     facile_menu/facilemenu.cpp \
     facile_menu/facilemenuitem.cpp \
     interactive_buttons/interactivebuttonbase.cpp \
-    logindialog.cpp \
+    order_player/logindialog.cpp \
     main.cpp \
-    numberanimation.cpp \
-    orderplayerwindow.cpp
+    order_player/numberanimation.cpp \
+    order_player/orderplayerwindow.cpp
 
 HEADERS += \
-    clickslider.h \
+    order_player/clickslider.h \
     color_octree/coloroctree.h \
     color_octree/imageutil.h \
-    desktoplyricwidget.h \
+    order_player/desktoplyricwidget.h \
     facile_menu/facilemenu.h \
     facile_menu/facilemenuitem.h \
     interactive_buttons/interactivebuttonbase.h \
-    itemselectionlistview.h \
-    logindialog.h \
-    lyricstreamwidget.h \
-    numberanimation.h \
-    orderplayerwindow.h \
-    roundedpixmaplabel.h \
-    songbeans.h
+    order_player/itemselectionlistview.h \
+    order_player/logindialog.h \
+    order_player/lyricstreamwidget.h \
+    order_player/numberanimation.h \
+    order_player/orderplayerwindow.h \
+    order_player/roundedpixmaplabel.h \
+    order_player/songbeans.h
 
 FORMS += \
-    logindialog.ui \
-    orderplayerwindow.ui
+    order_player/logindialog.ui \
+    order_player/orderplayerwindow.ui
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin

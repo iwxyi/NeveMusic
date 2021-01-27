@@ -1,4 +1,4 @@
-一个没有名字的点歌机
+雪以音乐
 ===
 
 ——[神奇弹幕](https://github.com/iwxyi/Bilibili-MagicalDanmaku)点歌姬插件
@@ -15,7 +15,7 @@
 - 按关键词搜索
 - 智能分析歌名
 - 点歌自动播放
-- 自动点歌队列
+- 多条点歌队列
 - 点歌防止刷屏
 - 预计时长回复
 - 背景封面模糊
@@ -29,7 +29,7 @@
 
 ### 截图
 
-![music2](README.assets/music2.png)
+![music2](screenshots/music2.png)
 
 ![music1](screenshots/music1.png)
 

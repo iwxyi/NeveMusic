@@ -116,7 +116,7 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     ui->searchResultTable->verticalScrollBar()->setStyleSheet(vScrollBarSS);
     ui->searchResultTable->horizontalScrollBar()->setStyleSheet(hScrollBarSS);
     ui->listTabWidget->removeTab(LISTTAB_PLAYLIST); // TOOD: 歌单部分没做好，先隐藏
-    ui->titleButton->setText(settings.value("music/title", "Lazy点歌姬").toString());
+    ui->titleButton->setText(settings.value("music/title", "雪以音乐").toString());
 
     const int btnR = 5;
     ui->titleButton->setRadius(btnR);
@@ -1779,6 +1779,19 @@ void OrderPlayerWindow::connectDesktopLyricSignals()
 void OrderPlayerWindow::setCurrentCover(const QPixmap &pixmap)
 {
     currentCover = pixmap;
+    // 设置歌曲
+    int side = qMin(pixmap.width(), pixmap.height());
+    QPixmap appFace = QPixmap(side, side);
+    appFace.fill(Qt::transparent);
+    QPainter painter(&appFace);
+    painter.setRenderHints(QPainter::Antialiasing | QPainter::SmoothPixmapTransform);
+    QPainterPath path;
+    path.addEllipse(0, 0, side, side);
+    painter.setClipPath(path);
+    painter.drawPixmap(0, 0, side, side, pixmap);
+    setWindowIcon(appFace);
+
+    // 设置主题
     if (themeColor)
         setThemeColor(currentCover);
     if (blurBg)
