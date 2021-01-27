@@ -301,6 +301,13 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
         });
     }
 
+
+    restoreGeometry(settings.value("orderplayerwindow/geometry").toByteArray());
+    restoreState(settings.value("orderplayerwindow/state").toByteArray());
+
+    if (settings.value("music/desktopLyric", false).toBool())
+        desktopLyric->show();
+
     clearHoaryFiles();
 }
 
@@ -794,15 +801,8 @@ Song OrderPlayerWindow::getSuiableSong(QString key) const
 void OrderPlayerWindow::showEvent(QShowEvent *e)
 {
     QMainWindow::showEvent(e);
+    repaint();
 
-    static bool firstShow = true;
-    if (firstShow)
-    {
-        firstShow = false;
-    }
-
-    restoreGeometry(settings.value("orderplayerwindow/geometry").toByteArray());
-    restoreState(settings.value("orderplayerwindow/state").toByteArray());
     ui->splitter->restoreState(settings.value("orderplayerwindow/splitterState").toByteArray());
     auto sizes = ui->splitter->sizes();
     if (sizes.at(0)+1 >= sizes.at(1))
@@ -813,9 +813,6 @@ void OrderPlayerWindow::showEvent(QShowEvent *e)
     }
 
     adjustExpandPlayingButton();
-
-    if (settings.value("music/desktopLyric", false).toBool())
-        desktopLyric->show();
 }
 
 void OrderPlayerWindow::closeEvent(QCloseEvent *)
