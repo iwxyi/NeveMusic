@@ -47,7 +47,8 @@ HEADERS += \
     order_player/numberanimation.h \
     order_player/orderplayerwindow.h \
     order_player/roundedpixmaplabel.h \
-    order_player/songbeans.h
+    order_player/songbeans.h \
+    resource.rc
 
 FORMS += \
     order_player/logindialog.ui \
