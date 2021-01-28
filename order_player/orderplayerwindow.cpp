@@ -275,11 +275,22 @@ OrderPlayerWindow::OrderPlayerWindow(QWidget *parent)
     else
     {
         // 设置默认封面
-        prevBlurBg = currentBlurBg = QPixmap(":/bg/bg");
+        /*prevBlurBg = currentBlurBg = QPixmap(":/bg/bg");
         prevBgAlpha = 255;
         currentBgAlpha = qMin(blurAlpha, 255);
         QTimer::singleShot(200, [=]{
             startBgAnimation(3000);
+        });*/
+
+        prevBlurBg = currentBlurBg = QPixmap(":/bg/bg");
+        prevBgAlpha = 0;
+        currentBgAlpha = 255;
+        startBgAnimation(1500);
+        QTimer::singleShot(1800, this, [=]{
+            prevBlurBg = QPixmap(":/bg/bg");
+            prevBgAlpha = currentBgAlpha;
+            currentBgAlpha = qMin(blurAlpha, 255);
+            startBgAnimation(2500);
         });
     }
     starting = false;
