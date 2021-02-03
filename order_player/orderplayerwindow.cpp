@@ -2362,6 +2362,13 @@ void OrderPlayerWindow::on_orderSongsListView_customContextMenuRequested(const Q
         removeOrder(songs);
     })->disable(!songs.size());
 
+    menu->split()->addAction("打开分享的歌单", [=]{
+        QString url = QInputDialog::getText(this, "查看歌单", "支持网易云音乐、QQ音乐的分享链接");
+        if (url.isEmpty())
+            return ;
+        openPlayList(url);
+    });
+
     menu->exec();
 }
 
@@ -2407,16 +2414,16 @@ void OrderPlayerWindow::on_favoriteSongsListView_customContextMenuRequested(cons
         setSongModelToView(favoriteSongs, ui->favoriteSongsListView);
     })->disable(songs.size() != 1 || row >= favoriteSongs.size()-1);
 
-    menu->addAction("打开分享的歌单", [=]{
+    menu->split()->addAction("移出收藏", [=]{
+        removeFavorite(songs);
+    })->disable(!songs.size());
+
+    menu->split()->addAction("打开分享的歌单", [=]{
         QString url = QInputDialog::getText(this, "查看歌单", "支持网易云音乐、QQ音乐的分享链接");
         if (url.isEmpty())
             return ;
         openPlayList(url);
     });
-
-    menu->split()->addAction("移出收藏", [=]{
-        removeFavorite(songs);
-    })->disable(!songs.size());
 
     menu->exec();
 }
@@ -2492,16 +2499,16 @@ void OrderPlayerWindow::on_normalSongsListView_customContextMenuRequested(const 
         setSongModelToView(normalSongs, ui->normalSongsListView);
     })->disable(songs.size() != 1 || row >= normalSongs.size()-1);
 
-    menu->addAction("打开分享的歌单", [=]{
+    menu->split()->addAction("移出固定播放", [=]{
+        removeNormal(songs);
+    })->disable(!songs.size());
+
+    menu->split()->addAction("打开分享的歌单", [=]{
         QString url = QInputDialog::getText(this, "查看歌单", "支持网易云音乐、QQ音乐的分享链接");
         if (url.isEmpty())
             return ;
         openPlayList(url);
     });
-
-    menu->split()->addAction("移出固定播放", [=]{
-        removeNormal(songs);
-    })->disable(!songs.size());
 
     menu->exec();
 }
