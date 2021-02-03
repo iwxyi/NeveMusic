@@ -48,7 +48,7 @@
 
 > 若不是通过点歌自动搜索的结果，将不会显示“点歌用户”和“换这首歌”菜单
 
-![switch](README.assets/switch-1612360304151.png)
+![switch](screenshots/switch.png)
 
 #### 试听歌曲
 
