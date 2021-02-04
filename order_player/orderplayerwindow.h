@@ -174,9 +174,9 @@ private slots:
 
     void on_historySongsListView_customContextMenuRequested(const QPoint &);
 
-    void on_listSongsListView_customContextMenuRequested(const QPoint &pos);
+    void on_listSongsListView_customContextMenuRequested(const QPoint &);
 
-    void on_normalSongsListView_customContextMenuRequested(const QPoint &pos);
+    void on_normalSongsListView_customContextMenuRequested(const QPoint &);
 
     void on_orderSongsListView_activated(const QModelIndex &index);
 
@@ -192,7 +192,7 @@ private slots:
 
     void slotPlayerPositionChanged();
 
-    void on_splitter_splitterMoved(int pos, int index);
+    void on_splitter_splitterMoved(int, int);
 
     void on_titleButton_clicked();
 
@@ -253,9 +253,9 @@ private:
 
     void setMusicIconBySource();
 
-    void fetch(QString url, NetStringFunc func);
-    void fetch(QString url, NetJsonFunc func);
-    void fetch(QString url, NetReplyFunc func);
+    void fetch(QString url, NetStringFunc func, MusicSource cookie = UnknowMusic);
+    void fetch(QString url, NetJsonFunc func, MusicSource cookie = UnknowMusic);
+    void fetch(QString url, NetReplyFunc func, MusicSource cookie = UnknowMusic);
     QVariant getCookies(QString cookieString);
 
 protected:
