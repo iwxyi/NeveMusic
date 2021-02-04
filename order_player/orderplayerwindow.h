@@ -44,7 +44,7 @@ QT_END_NAMESPACE
 #define LISTTAB_PLAYLIST 3
 #define LISTTAB_HISTORY 3
 
-#define MUSIC_DEB if (0) qDebug()
+#define MUSIC_DEB if (1) qDebug()
 
 typedef std::function<void(QString)> const NetStringFunc;
 typedef std::function<void(QJsonObject)> const NetJsonFunc;
@@ -97,7 +97,7 @@ struct BFSColor
     {
         BFSColor bfs;
         for (int i = 0; i < 12; i++)
-            bfs.v[i] = this->v[i] * prop;
+            bfs.v[i] = int(this->v[i] * prop);
         return bfs;
     }
 
@@ -256,6 +256,7 @@ private:
     void fetch(QString url, NetStringFunc func, MusicSource cookie = UnknowMusic);
     void fetch(QString url, NetJsonFunc func, MusicSource cookie = UnknowMusic);
     void fetch(QString url, NetReplyFunc func, MusicSource cookie = UnknowMusic);
+    void fetch(QString url, QStringList params, NetJsonFunc func, MusicSource cookie = UnknowMusic);
     QVariant getCookies(QString cookieString);
 
 protected:
