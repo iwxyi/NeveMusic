@@ -1376,6 +1376,10 @@ void OrderPlayerWindow::downloadSong(Song song)
             MUSIC_DEB << "    信息：" << br << size << type << fileUrl;
             if (size == 0)
             {
+                if (!song.addBy.isEmpty())
+                {
+                    emit signalOrderSongNoCopyright(song);
+                }
                 qDebug() << "无法下载，可能没有版权" << song.simpleString();
                 if (playAfterDownloaded == song)
                 {
