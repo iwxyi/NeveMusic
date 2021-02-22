@@ -44,7 +44,7 @@ QT_END_NAMESPACE
 #define LISTTAB_PLAYLIST 3
 #define LISTTAB_HISTORY 3
 
-#define MUSIC_DEB if (1) qDebug()
+#define MUSIC_DEB if (0) qDebug()
 
 typedef std::function<void(QString)> const NetStringFunc;
 typedef std::function<void(QJsonObject)> const NetJsonFunc;
@@ -136,10 +136,14 @@ public:
         SingleCircle
     };
 
+    const SongList& getOrderSongs() const;
     bool hasSongInOrder(QString by);
 
 public slots:
     void slotSearchAndAutoAppend(QString key, QString by = "");
+    void improveUserSongByOrder(QString username, int promote);
+    void cutSongIfUser(QString username);
+    void cutSong();
 
 private slots:
     void on_searchEdit_returnPressed();
@@ -286,7 +290,12 @@ signals:
     // 因为目标是作为插件，这些信号是给外面程序连接的
     void signalOrderSongSucceed(Song song, qint64 msecond, int waiting);
     void signalOrderSongPlayed(Song song);
+    void signalOrderSongModified(const SongList& songs);
     void signalOrderSongNoCopyright(Song song);
+    void signalOrderSongImproved(Song song, int previous, int current);
+    void signalOrderSongCutted(Song song);
+    void signalOrderSongStarted();
+    void signalOrderSongEnded();
 
     void signalWindowClosed();
 

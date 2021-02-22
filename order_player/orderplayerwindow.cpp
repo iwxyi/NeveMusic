@@ -330,6 +330,11 @@ OrderPlayerWindow::~OrderPlayerWindow()
     desktopLyric->deleteLater();
 }
 
+const SongList &OrderPlayerWindow::getOrderSongs() const
+{
+    return orderSongs;
+}
+
 bool OrderPlayerWindow::hasSongInOrder(QString by)
 {
     foreach (Song song, orderSongs)
@@ -360,8 +365,53 @@ void OrderPlayerWindow::on_searchButton_clicked()
  */
 void OrderPlayerWindow::slotSearchAndAutoAppend(QString key, QString by)
 {
+    if (!playingSong.isValid() && (!playAfterDownloaded.isValid() || !downloadingSong.isValid()))
+        emit signalOrderSongStarted();
     ui->searchEdit->setText(key);
     searchMusic(key, by, true);
+}
+
+/**
+ * 提升用户歌曲的序列
+ * 队列中的第一首歌除外
+ */
+void OrderPlayerWindow::improveUserSongByOrder(QString username, int promote)
+{
+    for (int i = 1; i < orderSongs.size(); i++)
+    {
+        Song song = orderSongs.at(i);
+        if (song.addBy != username)
+            continue;
+
+        // 提升这首歌
+        int newIndex = i - promote;
+        if (i < 0)
+            i = 0;
+        orderSongs.removeAt(i--);
+        orderSongs.insert(newIndex, song);
+        saveSongList("music/order", orderSongs);
+        setSongModelToView(orderSongs, ui->orderSongsListView);
+        emit signalOrderSongImproved(song, i, newIndex);
+        break;
+    }
+}
+
+void OrderPlayerWindow::cutSongIfUser(QString username)
+{
+    if (!playingSong.isValid())
+        return ;
+    if (playingSong.addBy != username)
+        return ;
+    emit signalOrderSongCutted(playingSong);
+    on_nextSongButton_clicked();
+}
+
+void OrderPlayerWindow::cutSong()
+{
+    if (!playingSong.isValid())
+        return ;
+    emit signalOrderSongCutted(playingSong);
+    on_nextSongButton_clicked();
 }
 
 /**
@@ -661,6 +711,9 @@ void OrderPlayerWindow::setSongModelToView(const SongList &songs, QListView *lis
         delete model;
     model = new QStringListModel(sl);
     listView->setModel(model);
+
+    if (listView == ui->orderSongsListView)
+        emit signalOrderSongModified(songs);
 }
 
 /**
@@ -1109,7 +1162,7 @@ void OrderPlayerWindow::playNext()
     if (!orderSongs.size()) // 播放列表全部结束
     {
         // 查看固定列表
-        if (!normalSongs.size())
+        if (!normalSongs.size()) // 固定列表没有歌曲
             return ;
 
         int r = qrand() % normalSongs.size();
@@ -2374,11 +2427,12 @@ void OrderPlayerWindow::slotSongPlayEnd()
         if (!orderSongs.size() && !normalSongs.size())
         {
             ui->playProgressSlider->setSliderPosition(0);
-            ui->playProgressSlider->setMaximum(0);
+            // ui->playProgressSlider->setMaximum(0);
             ui->playingCurrentTimeLabel->setText("00:00");
-            ui->playingAllTimeLabel->setText("05:20");
+            // ui->playingAllTimeLabel->setText("05:20");
 
             setCurrentCover(QPixmap(":bg/bg"));
+            emit signalOrderSongEnded();
         }
         else
         {
